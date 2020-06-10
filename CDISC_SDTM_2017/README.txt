@@ -1,0 +1,1 @@
+Repository for the old CDISC SDTM rules published by CDISC in 2017.
