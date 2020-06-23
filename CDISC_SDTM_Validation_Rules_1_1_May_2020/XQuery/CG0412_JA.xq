@@ -12,6 +12,7 @@ See the License for the specific language governing permissions and limitations 
 :)
 
 (: Rule CG0412 - When DM.ACTARMCD not in ('SCRNFAIL', 'NOTASSGN', 'NOTTRT') then Subject records > 0 in DS  :)
+(: Does not appply to SDTMIG v.3.3 :)
 xquery version "3.0";
 declare namespace def = "http://www.cdisc.org/ns/def/v2.0";
 declare namespace odm="http://www.cdisc.org/ns/odm/v1.3";

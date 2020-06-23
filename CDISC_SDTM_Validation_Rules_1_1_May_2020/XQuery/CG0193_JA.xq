@@ -12,6 +12,7 @@ See the License for the specific language governing permissions and limitations 
 :)
 
 (: Rule CG0193 - When MBTESTCD = 'ORGANISM' and MBSTRESC ^= 'NO GROWTH' and MBMETHOD ^= 'GRAM STAIN', then MBRESCAT != null :)
+(: Not applicable to SDTMIG v.3.3, as test code terminology expectations have changed :)
 xquery version "3.0";
 declare namespace def = "http://www.cdisc.org/ns/def/v2.0";
 declare namespace odm="http://www.cdisc.org/ns/odm/v1.3";

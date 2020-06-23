@@ -12,6 +12,7 @@ See the License for the specific language governing permissions and limitations 
 :)
 
 (: Rule CG0119 - When ACTARM in ('Screen Failure', 'Not Assigned') then ACTARM = ARM :)
+(: Rule CG0119 does NOT apply to SDTMIG v.3.3, only to v.3.2 :)
 xquery version "3.0";
 declare namespace def = "http://www.cdisc.org/ns/def/v2.0";
 declare namespace odm="http://www.cdisc.org/ns/odm/v1.3";

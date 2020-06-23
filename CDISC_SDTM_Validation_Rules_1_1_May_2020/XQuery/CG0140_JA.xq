@@ -12,6 +12,7 @@ See the License for the specific language governing permissions and limitations 
 :)
 	
 (: Rule CG0140 - When multiple records in SUPPDM where RACE captured then RACE = 'MULTIPLE' :)
+(: N/A for v3.3 (new variable ARMNRS) :)
 xquery version "3.0";
 declare namespace def = "http://www.cdisc.org/ns/def/v2.0";
 declare namespace odm="http://www.cdisc.org/ns/odm/v1.3";

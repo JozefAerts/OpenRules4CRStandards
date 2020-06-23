@@ -12,6 +12,7 @@ See the License for the specific language governing permissions and limitations 
 :)
 
 (: Rule CG0073 When DSCAT != 'DISPOSTION EVENT' then EPOCH = null :)
+(: Unclear whether also applicable to SDTMIG v.3.3 :)
 xquery version "3.0";
 declare namespace def = "http://www.cdisc.org/ns/def/v2.0";
 declare namespace odm="http://www.cdisc.org/ns/odm/v1.3";
