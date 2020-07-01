@@ -12,7 +12,6 @@ See the License for the specific language governing permissions and limitations 
 :)
 
 (: Rule CG0146 - When Milestone associated with RFSTDTC is start of treatment and ACTARM not in ('Screen Failure' 'Not Assigned' 'Not Treated') then RFSTDTC != null  :)
-(: N/A for v3.3 (new variable ARMNRS) :)
 (: We can only check that when ACTARM not in ('Screen Failure' 'Not Assigned' 'Not  Treated') then RFSTDTC != null :)
 xquery version "3.0";
 declare namespace def = "http://www.cdisc.org/ns/def/v2.0";

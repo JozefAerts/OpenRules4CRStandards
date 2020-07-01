@@ -12,7 +12,6 @@ See the License for the specific language governing permissions and limitations 
 :)
 
 (: Rule CG0398 - When DSCAT = 'DISPOSITION EVENT' and DSTERM != 'COMPLETED' then at most one record per subject per epoch :)
-(: Seems not to be applicable to SDTMIG v.3.3 :)
 xquery version "3.0";
 declare namespace def = "http://www.cdisc.org/ns/def/v2.0";
 declare namespace odm="http://www.cdisc.org/ns/odm/v1.3";

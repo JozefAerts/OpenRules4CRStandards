@@ -16,6 +16,7 @@ We must look into the SDTM specification itself, make a list (how do we deal wit
 Is it also possible (in a second step?) to compare the order of the variables in each record with that in the define.xml?
 :)	
 (: The current version uses the CDISC Library and its API :)
+(: Single dataset version :)
 xquery version "3.0";
 declare namespace def = "http://www.cdisc.org/ns/def/v2.0";
 declare namespace odm="http://www.cdisc.org/ns/odm/v1.3";
@@ -26,9 +27,11 @@ declare namespace functx = "http://www.functx.com";
 (: "declare variable ... external" allows to pass $base and $define from an external programm :)
 declare variable $base external;
 declare variable $define external;
+declare variable $datasetname external;
 (: CDISC Library API username and password :)
 declare variable $username external;
 declare variable $password external;
+
 (: function to find out whether a value is in a sequence (array) :)
 declare function functx:is-value-in-sequence
   ( $value as xs:anyAtomicType? ,
@@ -129,7 +132,7 @@ let $associatedpersonsresponse := http:send-request(<http:request method='get' u
 let $associatedpersonsclassVariables := $associatedpersonsresponse/json//classVariables/*/name/text()
 let $associatedpersonsdatasetVariables := $associatedpersonsresponse/json//datasetVariables/*/name/text()
 (: iterate over all dataset definitions, and get the class, name and domain :)
-for $itemgroupdef in $definedoc//odm:ItemGroupDef
+for $itemgroupdef in $definedoc//odm:ItemGroupDef[@Name=$datasetname]
 	let $defclass := $itemgroupdef/@def:Class
     let $name := $itemgroupdef/@Name
     let $domain := (

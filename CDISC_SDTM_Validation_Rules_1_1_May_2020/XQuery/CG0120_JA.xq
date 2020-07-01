@@ -12,7 +12,6 @@ See the License for the specific language governing permissions and limitations 
 :)
 
 (: Rule CG0120 - When ARM not in TA.ARM then ARM in ('Screen Failure', 'Not Assigned') :)
-(: Rule CG0120 does NOT apply to SDTMIG v.3.3, only to v.3.2 :)
 xquery version "3.0";
 declare namespace def = "http://www.cdisc.org/ns/def/v2.0";
 declare namespace odm="http://www.cdisc.org/ns/odm/v1.3";

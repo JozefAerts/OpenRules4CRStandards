@@ -36,7 +36,7 @@ let $meddrafile := 'soc.asc'
 let $meddralocation := concat($meddrabase,$meddrafile)
 (: read the meddra file line by line :)
 let $lines := unparsed-text-lines($meddralocation) 
-(: get the SOC terms, which is the second fied - field separator is the $ character :)
+(: get the SOC terms, which is the second field - field separator is the $ character :)
 let $socterms := (
 	for $line in $lines
 	return tokenize($line,'\$')[2]

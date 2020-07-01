@@ -35,7 +35,7 @@ let $meddrafile := 'pt.asc'
 let $meddralocation := concat($meddrabase,$meddrafile)
 (: read the meddra file line by line :)
 let $lines := unparsed-text-lines($meddralocation) 
-(: get the preferred term, which is the second fied - field separator is the $ character :)
+(: get the preferred term, which is the second field - field separator is the $ character :)
 let $ptterms := (
 	for $line in $lines
 	return upper-case(tokenize($line,'\$')[2])

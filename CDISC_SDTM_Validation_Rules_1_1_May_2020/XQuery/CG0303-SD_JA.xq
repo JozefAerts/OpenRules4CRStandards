@@ -12,7 +12,6 @@ See the License for the specific language governing permissions and limitations 
 :)
 
 (: Rule CG0303 - Variable Label = IG Label :)
-(: Rule not applicable for 3.3, as this is no longer cited as a requirement in section 3.2.2 :)
 xquery version "3.0";
 declare namespace def = "http://www.cdisc.org/ns/def/v2.0";
 declare namespace odm="http://www.cdisc.org/ns/odm/v1.3";

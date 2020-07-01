@@ -11,7 +11,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and limitations under the License.
 :)
 
-(: Rule CG0014: When Variable Core Status = Required then Variable present in dataset and "= null
+	(: Rule CG0014: When Variable Core Status = Required then Variable present in dataset and "= null
 Required variables must always be included in the dataset and cannot be null for any record :)
 (: An XML4Pharma RESTful web secvice is used to retrieve the required variables for each domain/dataset :)
 xquery version "3.0";
