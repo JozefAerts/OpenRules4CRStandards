@@ -14,6 +14,7 @@ See the License for the specific language governing permissions and limitations 
 (: Rule CG0380: --PTCD = MedDRA preferred term code :)
 xquery version "3.0";
 declare namespace def = "http://www.cdisc.org/ns/def/v2.0";
+declare namespace def21 = "http://www.cdisc.org/ns/def/v2.1";
 declare namespace odm="http://www.cdisc.org/ns/odm/v1.3";
 declare namespace data="http://www.cdisc.org/ns/Dataset-XML/v1.0";
 declare namespace xlink="http://www.w3.org/1999/xlink";
@@ -27,6 +28,7 @@ declare function functx:is-value-in-sequence
 } ;
 declare variable $base external; 
 declare variable $define external; 
+declare variable $defineversion external;
 (: the location of the MedDRA files (folder) need to be passed :)
 declare variable $meddrabase external; 
 (: let $base := '/db/fda_submissions/cdisc01/' 
@@ -55,8 +57,14 @@ for $itemgroup in $definedoc//odm:ItemGroupDef[@Name='AE' or @Name='MH' or @Name
     )
     let $ptcdname := $definedoc//odm:ItemDef[@OID=$ptcdoid]/@Name
     (: get the dataset location :)
-    let $datasetlocation := $itemgroup/def:leaf/@xlink:href
-    let $datasetdoc := doc(concat($base,$datasetlocation))
+	let $datasetlocation := (
+		if($defineversion='2.1') then $itemgroup/def21:leaf/@xlink:href
+		else $itemgroup/def:leaf/@xlink:href
+	)
+    let $datasetdoc := (
+		if($datasetlocation) then doc(concat($base,$datasetlocation))
+		else ()
+	)
     (: iterate over all the records in the dataset :)
     for $record in $datasetdoc//odm:ItemGroupData
         let $recnum := $record/@data:ItemGroupDataSeq
@@ -64,6 +72,6 @@ for $itemgroup in $definedoc//odm:ItemGroupDef[@Name='AE' or @Name='MH' or @Name
         let $ptcdvalue := $record/odm:ItemData[@ItemOID=$ptcdoid]/@Value
         (: give an error when the PTCD value is not one of the PT term codes of MedDRA -  :)
         where $ptcdvalue and not(functx:is-value-in-sequence($ptcdvalue,$pttermcodes))
-        return <error rule="CG0380" dataset="{data($name)}" variable="{data($ptcdname)}" recordnumber="{data($recnum)}" rulelastupdate="2020-06-18">Value '{data($ptcdvalue)}' for {data($ptcdname)} was not found in the MedDRA dictionary as a preferred term code</error>			
+        return <error rule="CG0380" dataset="{data($name)}" variable="{data($ptcdname)}" recordnumber="{data($recnum)}" rulelastupdate="2020-08-04">Value '{data($ptcdvalue)}' for {data($ptcdname)} was not found in the MedDRA dictionary as a preferred term code</error>			
 		
 	

@@ -15,12 +15,14 @@ See the License for the specific language governing permissions and limitations 
 then --TPT and --TPTNUM have a one-to-one relationship per unique combination of VISITNUM and –-TPTREF values :)
 xquery version "3.0";
 declare namespace def = "http://www.cdisc.org/ns/def/v2.0";
+declare namespace def21 = "http://www.cdisc.org/ns/def/v2.1";
 declare namespace odm="http://www.cdisc.org/ns/odm/v1.3";
 declare namespace data="http://www.cdisc.org/ns/Dataset-XML/v1.0";
 declare namespace xlink="http://www.w3.org/1999/xlink";
 declare namespace xs="http://www.w3.org/2001/XMLSchema";
 declare variable $base external;
 declare variable $define external; 
+declare variable $defineversion external;
 declare variable $datasetname external;
 (: let $base := 'LZZT_SDTM_Dataset-XML/'  :)
 (: let $define := 'define_2_0.xml' :)
@@ -61,7 +63,10 @@ for $itemgroupdef in $definedoc//odm:ItemGroupDef[@Name=$datasetname]
         return $a
     )
     (: get the location of the dataset and document :)
-    let $datasetlocation := $itemgroupdef/def:leaf/@xlink:href
+	let $datasetlocation := (
+		if($defineversion='2.1') then $itemgroupdef/def21:leaf/@xlink:href
+		else $itemgroupdef/def:leaf/@xlink:href
+	)
     (: get the dataset document, but only when VISITNUM and --TPTREF are present,
       and TPT and TPTNUM are present :)
     let $datasetdoc := (
@@ -95,6 +100,6 @@ for $itemgroupdef in $definedoc//odm:ItemGroupDef[@Name=$datasetname]
         (: The number of unique value of -TPT within a single -TPTNUM must be exacty 1 :)
         let $tptvaluescount := count($uniquetptvalues)
         where not(number($tptvaluescount)=1)
-        return <error rule="CG0573" dataset="{data($name)}" variable="{data($tptname)}" rulelastupdate="2020-06-23">Inconsistent value for --TPT within --TPTNUM in dataset {data($name)}. {data($tptvaluescount)} different --TPT values were found for --TPTNUM={data($uniquetptnumvalue)} within VISITNUM='{data($visitnumvalue)}' and {data($tptrefname)}='{data($tptrefvalue)}' and USUBJID='{data($usubjidvalue)}'</error>							
+        return <error rule="CG0573" dataset="{data($name)}" variable="{data($tptname)}" rulelastupdate="2020-08-04">Inconsistent value for --TPT within --TPTNUM in dataset {data($name)}. {data($tptvaluescount)} different --TPT values were found for --TPTNUM={data($uniquetptnumvalue)} within VISITNUM='{data($visitnumvalue)}' and {data($tptrefname)}='{data($tptrefvalue)}' and USUBJID='{data($usubjidvalue)}'</error>							
 	
 	

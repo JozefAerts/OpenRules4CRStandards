@@ -14,18 +14,23 @@ See the License for the specific language governing permissions and limitations 
 (: Rule CG0200 - RELREC - Within a subject each unique RELID is present on multiple RELREC records :)
 xquery version "3.0";
 declare namespace def = "http://www.cdisc.org/ns/def/v2.0";
+declare namespace def21 = "http://www.cdisc.org/ns/def/v2.1";
 declare namespace odm="http://www.cdisc.org/ns/odm/v1.3";
 declare namespace data="http://www.cdisc.org/ns/Dataset-XML/v1.0";
 declare namespace xlink="http://www.w3.org/1999/xlink";
 declare variable $base external;
 declare variable $define external; 
+declare variable $defineversion external;
 (: let $base := '/db/fda_submissions/cdiscpilot01/' :) 
 (: let $define := 'define_2_0.xml' :)
 let $definedoc := doc(concat($base,$define))
 (: get the RELREC dataset definition :)
 let $relrecitemgroupdef := $definedoc//odm:ItemGroupDef[@Name='RELREC']
 (: get the dataset location :)
-let $relrecdatasetlocation := $relrecitemgroupdef/def:leaf/@xlink:href
+let $relrecdatasetlocation := (
+	if($defineversion='2.1') then $relrecitemgroupdef/def21:leaf/@xlink:href
+	else $relrecitemgroupdef/def:leaf/@xlink:href
+)
 let $relrecdatasetdoc := doc(concat($base,$relrecdatasetlocation))
 (: get the OID of USUBJID and of RELID :)
 let $usubjidoid := (
@@ -55,6 +60,6 @@ for $group in $orderedrecords
     let $relid := $group/odm:ItemGroupData[1]/odm:ItemData[@ItemOID=$relidoid]/@Value
     (: each group should at least have 2 records :)
     where count($group/odm:ItemGroupData) < 2
-    return <error rule="CG0200" dataset="RELREC" rulelastupdate="2020-06-14" >There is only 1 record for the combination of USUBJID={data($usubjid)} and RELID={data($relid)}</error>		
+    return <error rule="CG0200" dataset="RELREC" rulelastupdate="2020-08-04" >There is only 1 record for the combination of USUBJID={data($usubjid)} and RELID={data($relid)}</error>		
 		
 	

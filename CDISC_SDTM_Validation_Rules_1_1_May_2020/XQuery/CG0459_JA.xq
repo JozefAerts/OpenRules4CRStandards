@@ -18,6 +18,7 @@ See the License for the specific language governing permissions and limitations 
 :)
 xquery version "3.0";
 declare namespace def = "http://www.cdisc.org/ns/def/v2.0";
+declare namespace def21 = "http://www.cdisc.org/ns/def/v2.1";
 declare namespace odm="http://www.cdisc.org/ns/odm/v1.3";
 declare namespace data="http://www.cdisc.org/ns/Dataset-XML/v1.0";
 declare namespace xlink="http://www.w3.org/1999/xlink";
@@ -31,6 +32,7 @@ declare function functx:is-value-in-sequence
 (: "declare variable ... external" allows to pass $base and $define from an external programm :)
 declare variable $base external;
 declare variable $define external; 
+declare variable $defineversion external;
 (: let $base := '/db/fda_submissions/cdisc01/' :)
 (: let $define := 'define2-0-0-example-sdtm.xml' :)
 let $definedoc := doc(concat($base,$define))
@@ -38,8 +40,14 @@ let $definedoc := doc(concat($base,$define))
 let $nullflavors := ('NI','INV','DER','OTH','NINF','PINF','UNC','MSK','NA','UNK','ASKU','NAV','NASK','NAVU','QS','TRC','NP')
 (: get the TS dataset :)
 let $tsdataset := $definedoc//odm:ItemGroupDef[@Name='TS']
-let $tsdatasetname := $tsdataset/def:leaf/@xlink:href
-let $tsdatasetdoc := doc(concat($base,$tsdatasetname))
+let $tsdatasetname := (
+	if($defineversion='2.1') then $tsdataset/def21:leaf/@xlink:href
+	else $tsdataset/def:leaf/@xlink:href
+)
+let $tsdatasetdoc := (
+	if($tsdatasetname) then doc(concat($base,$tsdatasetname))
+	else ()
+)
 (: get the OID of TSVAL and TSVALNF :)
 let $tsvaloid := (
     for $a in $definedoc//odm:ItemDef[@Name='TSVAL']/@OID 
@@ -59,6 +67,6 @@ for $record in $tsdatasetdoc//odm:ItemGroupData[odm:ItemData[@ItemOID=$tsvaloid]
     let $tsvalnf := $record/odm:ItemData[@ItemOID=$tsvalnfoid]/@Value
     (: When TSVAL not populated with values in the ISO 21090 null flavor codelist, then TSVALNF must be null:)
     where not(functx:is-value-in-sequence($tsval,$nullflavors)) and string-length($tsvalnf)>0
-    return <error rule="CG0459" dataset="TS" variable="TSVALNF" rulelastupdate="2020-06-19" recordnumber="{data($recnum)}">TSVALNF='{data($tsvalnf)}' must be null as TSVAL='{data($tsval)}' is not an ISO-21090 null flavor</error>							
+    return <error rule="CG0459" dataset="TS" variable="TSVALNF" rulelastupdate="2020-08-04" recordnumber="{data($recnum)}">TSVALNF='{data($tsvalnf)}' must be null as TSVAL='{data($tsval)}' is not an ISO-21090 null flavor</error>							
 		
 	

@@ -16,6 +16,7 @@ See the License for the specific language governing permissions and limitations 
 then there must be a record with TSPARMCD = 'TDIGRP' for which the value TSVAL must be != null :)
 xquery version "3.0";
 declare namespace def = "http://www.cdisc.org/ns/def/v2.0";
+declare namespace def21 = "http://www.cdisc.org/ns/def/v2.1";
 declare namespace odm="http://www.cdisc.org/ns/odm/v1.3";
 declare namespace data="http://www.cdisc.org/ns/Dataset-XML/v1.0";
 declare namespace xlink="http://www.w3.org/1999/xlink";
@@ -24,11 +25,12 @@ declare namespace functx = "http://www.functx.com";
 (: "declare variable ... external" allows to pass $base and $define from an external programm :)
 declare variable $base external;
 declare variable $define external;
+declare variable $defineversion external;
 (: let $base := '/db/fda_submissions/cdisc01/' :)
 (: let $define := 'define2-0-0-example-sdtm.xml' :)
 let $definedoc := doc(concat($base,$define))
 (: iterate over all TS datasets (there should be only one) :)
-for $itemgroup in doc(concat($base,$define))//odm:ItemGroupDef[@Name='TS']
+for $itemgroup in $definedoc//odm:ItemGroupDef[@Name='TS']
     (: Get the OID for the TSVAL and TSPARMCD variables :)
     let $tsvaloid := (
         for $a in $definedoc//odm:ItemDef[@Name='TSVAL']/@OID
@@ -41,7 +43,10 @@ for $itemgroup in doc(concat($base,$define))//odm:ItemGroupDef[@Name='TS']
         return $a
     )
     (: get the dataset :)
-    let $datasetname := $itemgroup//def:leaf/@xlink:href
+	let $datasetname := (
+		if($defineversion='2.1') then $itemgroup//def21:leaf/@xlink:href
+		else $itemgroup//def:leaf/@xlink:href
+	)
     let $dataset := concat($base,$datasetname)
     let $datasetdoc := doc($dataset)
     (: look for a record with TSPARMCD='HLTSUBJI' and TSVAL='N' :)
@@ -52,6 +57,6 @@ for $itemgroup in doc(concat($base,$define))//odm:ItemGroupDef[@Name='TS']
     let $tdigrpvalue := $tdigrprecord/odm:ItemData[@ItemOID=$tsvaloid]/@Value
     (: TSPARMCD = 'TDIGRP' then TSVAL must not be null :)
     where $nothltsubjects and (not($tdigrpvalue))  (: give an error when TSVAL for TSPARMCD=TDIGRP is null  :)
-    return <error rule="CG0273" dataset="TS" variable="TSVAL" rulelastupdate="2020-06-15">Null value for TSVAL for TSPARMCD='TDIGRP' found although a record with TSPARMCD='HLTSUBJI and TSVAL='N' exists</error>			
+    return <error rule="CG0273" dataset="TS" variable="TSVAL" rulelastupdate="2020-08-04">Null value for TSVAL for TSPARMCD='TDIGRP' found although a record with TSPARMCD='HLTSUBJI and TSVAL='N' exists</error>			
 		
 	

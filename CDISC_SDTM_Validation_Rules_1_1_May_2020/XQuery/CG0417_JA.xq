@@ -14,32 +14,41 @@ See the License for the specific language governing permissions and limitations 
 (: Rule CG0417 - QNAM value length <=8 and cannot start with a number and cannot contain characters other than letters in upper case, numbers, or underscores   :)
 xquery version "3.0";
 declare namespace def = "http://www.cdisc.org/ns/def/v2.0";
+declare namespace def21 = "http://www.cdisc.org/ns/def/v2.1";
 declare namespace odm="http://www.cdisc.org/ns/odm/v1.3";
 declare namespace data="http://www.cdisc.org/ns/Dataset-XML/v1.0";
 declare namespace xlink="http://www.w3.org/1999/xlink";
 (: "declare variable ... external" allows to pass $base and $define from an external programm :)
 declare variable $base external; 
 declare variable $define external; 
+declare variable $defineversion external;
 (: let $base := '/db/fda_submissions/cdisc01/' :)
 (: let $define := 'define2-0-0-example-sdtm.xml' :)
+let $definedoc := doc(concat($base,$define))
 (: Get all the SUPPxx datasets :)
-for $dataset in doc(concat($base,$define))//odm:ItemGroupDef[starts-with(@Name,'SUPP')]
+for $dataset in $definedoc//odm:ItemGroupDef[starts-with(@Name,'SUPP')]
     let $name := $dataset/@Name
-    let $datasetname := $dataset/def:leaf/@xlink:href
-    let $datasetlocation := concat($base,$datasetname)
+	let $datasetname := (
+		if($defineversion='2.1') then $dataset/def21:leaf/@xlink:href
+		else $dataset/def:leaf/@xlink:href
+	)
+    let $datasetdoc := (
+		if($datasetname) then doc(concat($base,$datasetname))
+		else ()
+	)
     (: get the OID of the QNAM variable :)
     let $qnamoid := (
-        for $a in doc(concat($base,$define))//odm:ItemDef[@Name='QNAM']/@OID 
-        where $a = doc(concat($base,$define))//odm:ItemGroupDef[@Name=$name]/odm:ItemRef/@ItemOID
+        for $a in $definedoc//odm:ItemDef[@Name='QNAM']/@OID 
+        where $a = $definedoc//odm:ItemGroupDef[@Name=$name]/odm:ItemRef/@ItemOID
         return $a
     )
     (: iterate over all records in the dataset :)
-    for $record in doc($datasetlocation)//odm:ItemGroupData
+    for $record in $datasetdoc//odm:ItemGroupData
     let $recnum := $record/@data:ItemGroupDataSeq
     (: Get the QNAM value :)
     let $qnamvalue := $record/odm:ItemData[@ItemOID=$qnamoid]/@Value
     (: and check whether more than 8 characters and that the character types are correct :)
     where string-length($qnamvalue) > 8 or not(matches($qnamvalue,'[A-Z_][A-Z0-9_]*'))
-    return <error rule="CG0417" variable="QNAM" dataset="{data($name)}" rulelastupdate="2020-06-18" recordnumber="{data($recnum)}">Invalid value for QNAM in dataset {data($datasetname)} - Label={data($qnamvalue)} has more than 8 characters or starts with a number or contains characters other than letters in upper case, numbers, or underscores</error>			
+    return <error rule="CG0417" variable="QNAM" dataset="{data($name)}" rulelastupdate="2020-08-04" recordnumber="{data($recnum)}">Invalid value for QNAM in dataset {data($datasetname)} - Label={data($qnamvalue)} has more than 8 characters or starts with a number or contains characters other than letters in upper case, numbers, or underscores</error>			
 		
 	

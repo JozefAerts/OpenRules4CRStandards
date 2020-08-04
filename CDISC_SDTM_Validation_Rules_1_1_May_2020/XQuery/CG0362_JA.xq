@@ -14,6 +14,7 @@ See the License for the specific language governing permissions and limitations 
 (: Rule CG0362 - RELSUB - When POOLID != null then USUBJID = null:)
 xquery version "3.0";
 declare namespace def = "http://www.cdisc.org/ns/def/v2.0";
+declare namespace def21 = "http://www.cdisc.org/ns/def/v2.1";
 declare namespace odm="http://www.cdisc.org/ns/odm/v1.3";
 declare namespace data="http://www.cdisc.org/ns/Dataset-XML/v1.0";
 declare namespace xlink="http://www.w3.org/1999/xlink";
@@ -22,6 +23,7 @@ declare namespace functx = "http://www.functx.com";
 (: "declare variable ... external" allows to pass $base and $define from an external programm :)
 declare variable $base external;
 declare variable $define external;
+declare variable $defineversion external;
 (: let $base := '/db/fda_submissions/cdisc01/' :)
 (: let $define := 'define2-0-0-example-sdtm.xml' :)
 let $definedoc := doc(concat($base,$define)) 
@@ -39,7 +41,10 @@ let $relsubitemgroupdef := $definedoc//odm:ItemGroupDef[@Name='RELSUB']
         return $a
     )
     (: get the location and document for the RELSUB dataset :)
-    let $relsubdatasetlocation := $relsubitemgroupdef/def:leaf/@xlink:href
+	let $relsubdatasetlocation := (
+		if($defineversion='2.1') then $relsubitemgroupdef/def21:leaf/@xlink:href
+		else $relsubitemgroupdef/def:leaf/@xlink:href
+	)
     let $relsubdoc := (
 		if($relsubdatasetlocation) then doc(concat($base,$relsubdatasetlocation))
 		else ()
@@ -52,6 +57,6 @@ let $relsubitemgroupdef := $definedoc//odm:ItemGroupDef[@Name='RELSUB']
         let $poolid := $record/odm:ItemData[@ItemOID=$poolidoid]/@Value
         (: USUBJID must be null :)
         where $usubjid
-        return <error rule="CG0362" dataset="RELSUB" variable="USUBJID" recordnumber="{data($recnum)}" rulelastupdate="2020-06-17">USUBJID='{data($usubjid)}' must be null as POOLID='{data($poolid)}' is not null</error>			
+        return <error rule="CG0362" dataset="RELSUB" variable="USUBJID" recordnumber="{data($recnum)}" rulelastupdate="2020-08-04">USUBJID='{data($usubjid)}' must be null as POOLID='{data($poolid)}' is not null</error>			
 		
 	

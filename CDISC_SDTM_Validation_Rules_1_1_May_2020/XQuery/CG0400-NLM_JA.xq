@@ -14,6 +14,7 @@ See the License for the specific language governing permissions and limitations 
 (: Rule CG0400 - --LOINC = valid code in the version of the LOINC dictionary specified in define.xml :)
 xquery version "3.0";
 declare namespace def = "http://www.cdisc.org/ns/def/v2.0";
+declare namespace def21 = "http://www.cdisc.org/ns/def/v2.1";
 declare namespace odm="http://www.cdisc.org/ns/odm/v1.3";
 declare namespace data="http://www.cdisc.org/ns/Dataset-XML/v1.0";
 declare namespace xlink="http://www.w3.org/1999/xlink";
@@ -22,13 +23,14 @@ declare namespace xs="http://www.w3.org/2001/XMLSchema";
 declare namespace fd="http://www.w3.org/2005/Atom";
 declare variable $base external;
 declare variable $define external; 
+declare variable $defineversion external;
 (: let $base := '/db/fda_submissions/LZZT_2013_LBLOINC/' :)
 (: let $define := 'define_2_0.xml' :)
 let $definedoc := doc(concat($base,$define))
 (: the base of the NLM RESTful web service - see https://medlineplus.gov/connect/service.html#labs :)
 let $webservicebase := 'https://apps.nlm.nih.gov/medlineplus/services/mpconnect_service.cfm?mainSearchCriteria.v.cs=2.16.840.1.113883.6.1&amp;mainSearchCriteria.v.c='
 (: iterate over all the FINDINGS datasets :)
-for $itemgroupdef in $definedoc//odm:ItemGroupDef[upper-case(@def:Class)='FINDINGS']
+for $itemgroupdef in $definedoc//odm:ItemGroupDef[upper-case(@def:Class)='FINDINGS' or upper-case(./def21:Class/@Name)='FINDINGS']
     let $name := $itemgroupdef/@Name
     let $domainname := (
         if($itemgroupdef/@Domain) then $itemgroupdef/@Domain
@@ -43,8 +45,14 @@ for $itemgroupdef in $definedoc//odm:ItemGroupDef[upper-case(@def:Class)='FINDIN
     (: and the full name :)
     let $loincname := $definedoc//odm:ItemDef[@OID=$loincoid]/@Name
     (: get the dataset location and document :)
-    let $datasetlocation := $itemgroupdef/def:leaf/@xlink:href
-    let $datasetdoc := doc(concat($base,$datasetlocation))
+	let $datasetlocation := (
+		if($defineversion='2.1') then $itemgroupdef/def21:leaf/@xlink:href
+		else $itemgroupdef/def:leaf/@xlink:href
+	)
+    let $datasetdoc := (
+		if($datasetlocation) then doc(concat($base,$datasetlocation))
+		else ()
+	)
     (: iterate over all the records in the dataset for which --LOINC is populated :)
     (: in order to reduce the number of web services requests, first group the records by LOINC code :)
     let $orderedrecords := (
@@ -69,7 +77,7 @@ for $itemgroupdef in $definedoc//odm:ItemGroupDef[upper-case(@def:Class)='FINDIN
             if(not($webserviceresponse)) then
                 for $record in $group/odm:ItemGroupData
                 let $recnum := $record/@data:ItemGroupDataSeq
-                return <error rule="CG0400" dataset="{data($name)}" recordnumber="{data($recnum)}" variable="{data($loincname)}" rulelastupdate="2020-06-18">LOINC code for {data($loincname)}='{data($loinc)}' is not recognized as a valid LOINC code by the NLM RESTful web service</error> 
+                return <error rule="CG0400" dataset="{data($name)}" recordnumber="{data($recnum)}" variable="{data($loincname)}" rulelastupdate="2020-08-04">LOINC code for {data($loincname)}='{data($loinc)}' is not recognized as a valid LOINC code by the NLM RESTful web service</error> 
             else ()
         return $errormessages
 		

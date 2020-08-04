@@ -15,6 +15,7 @@ See the License for the specific language governing permissions and limitations 
 (: The rule does not say on what "chronological order" should be based on !!!
 We will use --STDTC :)
 declare namespace def = "http://www.cdisc.org/ns/def/v2.0";
+declare namespace def21 = "http://www.cdisc.org/ns/def/v2.1";
 declare namespace odm="http://www.cdisc.org/ns/odm/v1.3";
 declare namespace data="http://www.cdisc.org/ns/Dataset-XML/v1.0";
 declare namespace xlink="http://www.w3.org/1999/xlink";
@@ -36,6 +37,7 @@ declare function functx:sequence-deep-equal
 (: "declare variable ... external" allows to pass $base and $define from an external programm :)
 declare variable $base external; 
 declare variable $define external; 
+declare variable $defineversion external;
 (: let $base := 'LZZT_SDTM_Dataset-XML/' :)
 (: let $define := 'define_2_0.xml' :)
 let $definedoc := doc(concat($base,$define))
@@ -62,7 +64,10 @@ for $itemgroupdef in $definedoc//odm:ItemGroupDef[@Name='SE' or @Name='PR']
     let $seqname := $definedoc//odm:ItemDef[@OID=$seqoid]/@Name
     let $stdtcname := $definedoc//odm:ItemDef[@OID=$stdtcoid]/@Name
     (: get the location of the dataset and the document itself :)
-    let $datasetlocation := $itemgroupdef/def:leaf/@xlink:href
+	let $datasetlocation := (
+		if($defineversion='2.1') then $itemgroupdef/def21:leaf/@xlink:href
+		else $itemgroupdef/def:leaf/@xlink:href
+	)
     let $datasetdoc := (
     	if($datasetlocation) then doc(concat($base,$datasetlocation))
         else ()
@@ -87,6 +92,6 @@ for $itemgroupdef in $definedoc//odm:ItemGroupDef[@Name='SE' or @Name='PR']
         (: the information in $stdtcdates and $sortedrecordsingroup must be identical. 
         If it isn't, the records are not in chronological order :)
         where not(functx:sequence-deep-equal($stdtcdates,$sortedrecordsingroup))
-       	return <error rule="CG0543" dataset="{data($name)}" rulelastupdate="2020-06-22">Records for subject with USUBJID={data($usubjidvalue)} are not in correct chronological order by {data($seqname)} and {data($stdtcname)}</error>		
+       	return <error rule="CG0543" dataset="{data($name)}" rulelastupdate="2020-08-04">Records for subject with USUBJID={data($usubjidvalue)} are not in correct chronological order by {data($seqname)} and {data($stdtcname)}</error>		
 	
 	

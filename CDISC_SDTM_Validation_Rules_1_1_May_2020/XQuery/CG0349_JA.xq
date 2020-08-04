@@ -12,8 +12,10 @@ See the License for the specific language governing permissions and limitations 
 :)
 
 (: Rule CG0349 - When Custom domain and variable name is not STUDYID, DOMAIN, USUBJID, POOLID, SPDEVID, VISIT, VISITNUM, VISITDY, ELEMENT, TAETORD, EPOCH, then Variable name begins with the 2-character domain code :)
+(: TODO: non-standard domain from define.xml 2.1 ItemGroupDef, support for define.xml 2.1 :)
 xquery version "3.0";
 declare namespace def = "http://www.cdisc.org/ns/def/v2.0";
+declare namespace def21 = "http://www.cdisc.org/ns/def/v2.1";
 declare namespace odm="http://www.cdisc.org/ns/odm/v1.3";
 declare namespace data="http://www.cdisc.org/ns/Dataset-XML/v1.0";
 declare namespace xlink="http://www.w3.org/1999/xlink";
@@ -27,6 +29,7 @@ declare function functx:is-value-in-sequence
 (: "declare variable ... external" allows to pass $base and $define from an external programm :)
 declare variable $base external;
 declare variable $define external; 
+declare variable $defineversion external;
 (: list of the variables that do not need to start with the domain name :)
 let $vars := ('STUDYID', 'DOMAIN', 'USUBJID', 'POOLID', 'SPDEVID', 'VISIT', 'VISITNUM', 'VISITDY', 'ELEMENT', 'TAETORD', 'EPOCH')
 (: get the define.xml document :)
@@ -34,11 +37,11 @@ let $vars := ('STUDYID', 'DOMAIN', 'USUBJID', 'POOLID', 'SPDEVID', 'VISIT', 'VIS
 (: let $define := 'define_2_0.xml' :)
 let $definedoc := doc(concat($base,$define)) 
 (: get a list of all Findings domains defined by SDTM for IG version 3.2 :)
-let $findingsdomains := doc('http://xml4pharmaserver.com:8080/CDISCDomainService/rest/DomainForClassForVersion/SDTM/Findings/3.2')/XML4PharmaServerWebServiceResponse/WebServiceResponse/domain/@name
+let $findingsdomains := doc('http://xml4pharmaserver.com:8080/CDISCDomainService/rest/DomainForClassForVersion/SDTM/Findings/3.2.xml')/XML4PharmaServerWebServiceResponse/WebServiceResponse/domain/@name
 (: get a list of all Interventions domains defined by SDTM for IG version 3.2 :)
-let $interventionsdomains := doc('http://xml4pharmaserver.com:8080/CDISCDomainService/rest/DomainForClassForVersion/SDTM/Interventions/3.2')/XML4PharmaServerWebServiceResponse/WebServiceResponse/domain/@name
+let $interventionsdomains := doc('http://xml4pharmaserver.com:8080/CDISCDomainService/rest/DomainForClassForVersion/SDTM/Interventions/3.2.xml')/XML4PharmaServerWebServiceResponse/WebServiceResponse/domain/@name
 (: get a list of all the Events domains defined by SDTM for IG version 3.2 :)
-let $eventsdomains := doc('http://xml4pharmaserver.com:8080/CDISCDomainService/rest/DomainForClassForVersion/SDTM/Events/3.2')/XML4PharmaServerWebServiceResponse/WebServiceResponse/domain/@name
+let $eventsdomains := doc('http://xml4pharmaserver.com:8080/CDISCDomainService/rest/DomainForClassForVersion/SDTM/Events/3.2.xml')/XML4PharmaServerWebServiceResponse/WebServiceResponse/domain/@name
 (: combine the 3 lists into a single one :)
 let $observationsclassdomains := ($findingsdomains,$eventsdomains,$interventionsdomains)
 (: we also need the list of special purpose and trial design domains :)
@@ -58,6 +61,6 @@ for $itemgroupdef in $definedoc//odm:ItemGroupDef[not(starts-with(@Name,'SUPP'))
         let $varname := $definedoc//odm:ItemDef[@OID=$itemoid]/@Name
         (: the variable name must be one of the list OR start with the domain name :)
         where not(functx:is-value-in-sequence($varname,$vars)) and not(starts-with($varname,$domain))
-        return <error rule="CG0349" dataset="{data($name)}" variable="{data($varname)}" rulelastupdate="2020-06-17">Variable {data($varname)} must start with the first 2 characters of the domain code '{data($domain)}' in the custom dataset {data($name)}</error>			
+        return <error rule="CG0349" dataset="{data($name)}" variable="{data($varname)}" rulelastupdate="2020-08-04">Variable {data($varname)} must start with the first 2 characters of the domain code '{data($domain)}' in the custom dataset {data($name)}</error>			
 		
 	

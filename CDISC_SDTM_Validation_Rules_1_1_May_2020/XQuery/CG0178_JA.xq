@@ -14,6 +14,7 @@ See the License for the specific language governing permissions and limitations 
 (: Rule CG0178 - IETEST in TI.IETEST :)
 xquery version "3.0";
 declare namespace def = "http://www.cdisc.org/ns/def/v2.0";
+declare namespace def21 = "http://www.cdisc.org/ns/def/v2.1";
 declare namespace odm="http://www.cdisc.org/ns/odm/v1.3";
 declare namespace data="http://www.cdisc.org/ns/Dataset-XML/v1.0";
 declare namespace xlink="http://www.w3.org/1999/xlink";
@@ -27,6 +28,7 @@ declare function functx:is-value-in-sequence
 (: "declare variable ... external" allows to pass $base and $define from an external programm :)
 declare variable $base external;
 declare variable $define external; 
+declare variable $defineversion external;
 (: let $base := 'LZZT_SDTM_Dataset-XML/' :)
 (: let $define := 'define_2_0.xml' :)
 let $definedoc := doc(concat($base,$define))  
@@ -45,15 +47,23 @@ let $ieietestoid := (
 )
 (: get the TI dataset :)
 let $tidataset := $definedoc//odm:ItemGroupDef[@Name='TI']
-let $tidatasetlocation := $tidataset/def:leaf/@xlink:href
+let $tidatasetlocation := (
+	if($defineversion='2.1') then $tidataset/def21:leaf/@xlink:href
+	else $tidataset/def:leaf/@xlink:href
+)
 let $tidatasetdoc := doc(concat($base,$tidatasetlocation))
 (: get all the values of TI.IETEST - this is a sequence (array) :)
 let $tiietestvalues := $tidatasetdoc[$tiietestoid]//odm:ItemGroupData/odm:ItemData[@ItemOID=$tiietestoid]/@Value
 (: Get the IE dataset :)
 let $iedataset := $definedoc//odm:ItemGroupDef[@Name='IE']
-let $iedatasetname := $iedataset/def:leaf/@xlink:href
-let $iedatasetlocation := concat($base,$iedatasetname)
-let $iedatasetdoc := doc(concat($base,$iedatasetlocation))[$ieietestoid]
+let $iedatasetname := (
+	if($defineversion='2.1') then $iedataset/def21:leaf/@xlink:href
+	else $iedataset/def:leaf/@xlink:href
+)
+let $iedatasetdoc := (
+	if($iedatasetname) then doc(concat($base,$iedatasetname))
+	else ()
+)
 (: iterate over all the records in the IE dataset :)
 for $record in $iedatasetdoc[$ieietestoid]//odm:ItemGroupData
     let $recnum := $record/@data:ItemGroupDataSeq
@@ -61,6 +71,6 @@ for $record in $iedatasetdoc[$ieietestoid]//odm:ItemGroupData
     let $ieietest := $record/odm:ItemData[@ItemOID=$ieietestoid]/@Value
     (: IETEST in TI.IETEST :)
     where not(functx:is-value-in-sequence($ieietest,$tiietestvalues))
-    return <error rule="CG0178" dataset="IE" variable="IETEST" rulelastupdate="2020-06-14" recordnumber="{data($recnum)}">Value of IE.IETEST={data($ieietest)} cannot be found in the TI dataset</error>				
+    return <error rule="CG0178" dataset="IE" variable="IETEST" rulelastupdate="2020-08-04" recordnumber="{data($recnum)}">Value of IE.IETEST={data($ieietest)} cannot be found in the TI dataset</error>				
 	
 	

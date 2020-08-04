@@ -14,18 +14,23 @@ See the License for the specific language governing permissions and limitations 
 (: Rule CG0152 - When ETCD = 'UNPLAN' then ELEMENT = null :)
 xquery version "3.0";
 declare namespace def = "http://www.cdisc.org/ns/def/v2.0";
+declare namespace def21 = "http://www.cdisc.org/ns/def/v2.1";
 declare namespace odm="http://www.cdisc.org/ns/odm/v1.3";
 declare namespace data="http://www.cdisc.org/ns/Dataset-XML/v1.0";
 declare namespace xlink="http://www.w3.org/1999/xlink";
 (: "declare variable ... external" allows to pass $base and $define from an external programm :)
 declare variable $base external;
 declare variable $define external;
+declare variable $defineversion external;
 (: let $base := '/db/fda_submissions/cdiscpilot01/' :)
 (: let $define := 'define_2_0.xml' :)
 let $definedoc := doc(concat($base,$define))
 (: get the SE dataset and its location :)
 let $seitemgroupdef := $definedoc//odm:ItemGroupDef[@Name='SE']
-let $sedatasetlocation := $seitemgroupdef/def:leaf/@xlink:href
+let $sedatasetlocation := (
+	if($defineversion='2.1') then $seitemgroupdef/def21:leaf/@xlink:href
+	else $seitemgroupdef/def:leaf/@xlink:href
+)
 let $sedatasetdoc := doc(concat($base,$sedatasetlocation))
 (: we need the OID of ETCD and ELEMENT :)
 let $etcdoid := (
@@ -46,6 +51,6 @@ for $record in $sedatasetdoc//odm:ItemGroupData
     let $element := $record/odm:ItemData[@ItemOID=$elementoid]/@Value
     (: When ETCD = 'UNPLAN' then ELEMENT = null :)
     where $etcd='UNPLAN' and $element  (: the latter meaning that ELEMENT is populated, so not null :)
-    return <error rule="CG0152" dataset="SE" variable="ELEMENT" rulelastupdate="2020-06-14" recordnumber="{data($recnum)}">Invalid value for ELEMENT={data($element)}, null was expected for ETCD='UNPLAN'</error>			
+    return <error rule="CG0152" dataset="SE" variable="ELEMENT" rulelastupdate="2020-08-04" recordnumber="{data($recnum)}">Invalid value for ELEMENT={data($element)}, null was expected for ETCD='UNPLAN'</error>			
 		
 	

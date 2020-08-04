@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and limitations 
 
 (: Rule CG0547: SMSTDTC ^= null :)
 declare namespace def = "http://www.cdisc.org/ns/def/v2.0";
+declare namespace def21 = "http://www.cdisc.org/ns/def/v2.1";
 declare namespace odm="http://www.cdisc.org/ns/odm/v1.3";
 declare namespace data="http://www.cdisc.org/ns/Dataset-XML/v1.0";
 declare namespace xlink="http://www.w3.org/1999/xlink";
@@ -21,6 +22,7 @@ declare namespace functx = "http://www.functx.com";
 (: "declare variable ... external" allows to pass $base and $define from an external programm :)
 declare variable $base external; 
 declare variable $define external; 
+declare variable $defineversion external;
 (: let $base := 'LZZT_SDTM_Dataset-XML/' :)
 (: let $define := 'define_2_0.xml' :)
 let $definedoc := doc(concat($base,$define))
@@ -34,7 +36,10 @@ for $smitemgroupdef in $definedoc//odm:ItemGroupDef[@Name='SM']
         return $a
     )
    (: get the SM dataset location and the document itself :)
-    let $smdatasetlocation := $smitemgroupdef/def:leaf/@xlink:href
+	let $smdatasetlocation := (
+		if($defineversion='2.1') then $smitemgroupdef/def21:leaf/@xlink:href
+		else $smitemgroupdef/def:leaf/@xlink:href
+	)
     let $smdoc := (
     	if($smdatasetlocation) then doc(concat($base,$smdatasetlocation))
         else ()
@@ -46,6 +51,6 @@ for $smitemgroupdef in $definedoc//odm:ItemGroupDef[@Name='SM']
         let $msstdtcvalue := $record/odm:ItemData[@ItemOID=$smstdtcoid]/@Value
         (: give an error when MSSTDTC is not populated :)
         where not($msstdtcvalue)
-        return <error rule="CG0547" dataset="{data($name)}" recordnumber="{data($recnum)}" rulelastupdate="2020-06-22">Value for MSSTDTC is missing</error>	
+        return <error rule="CG0547" dataset="{data($name)}" recordnumber="{data($recnum)}" rulelastupdate="2020-08-04">Value for MSSTDTC is missing</error>	
 	
 	

@@ -14,12 +14,14 @@ See the License for the specific language governing permissions and limitations 
 (: Rule CG0303 - Variable Label = IG Label :)
 xquery version "3.0";
 declare namespace def = "http://www.cdisc.org/ns/def/v2.0";
+declare namespace def21 = "http://www.cdisc.org/ns/def/v2.1";
 declare namespace odm="http://www.cdisc.org/ns/odm/v1.3";
 declare namespace data="http://www.cdisc.org/ns/Dataset-XML/v1.0";
 declare namespace xlink="http://www.w3.org/1999/xlink";
 declare namespace xs="http://www.w3.org/2001/XMLSchema";
 declare variable $base external;
 declare variable $define external;
+declare variable $defineversion external;
 declare variable $datasetname external;
 (: let $base := 'LZZT_SDTM_Dataset-XML/'  :)
 (: let $define := 'define_2_0.xml' :)
@@ -28,8 +30,10 @@ let $definedoc := doc(concat($base,$define))
 (: the base of the webservice :)
 (: Get the version of the SDTM-IG, with "3.2" as the default :)
 let $sdtmigversion := (
-	if($definedoc//odm:MetaDataVersion[@def:StandardName='SDTM-IG']/@def:StandardVersion) then
+	if($defineversion='2.0' and $definedoc//odm:MetaDataVersion[@def:StandardName='SDTM-IG']/@def:StandardVersion) then
     	$definedoc//odm:MetaDataVersion[@def:StandardName='SDTM-IG']/@def:StandardVersion
+	else if($defineversion='2.1' and $definedoc//odm:MetaDataVersion/def21:Standards/def21:Standard[@Type='IG' and @Name='SDTMIG']) then 
+		$definedoc//odm:MetaDataVersion/def21:Standards/def21:Standard[@Type='IG' and @Name='SDTMIG'][1]/@Version
     else '3.2'
 )
 let $webservicebase := concat('http://www.xml4pharmaserver.com:8080/CDISCCTService/rest/SDTMVariableInfoForDomainAndVersion/',$sdtmigversion,'/')
@@ -63,6 +67,6 @@ for $itemgroupdef in $definedoc//odm:ItemGroupDef[@Name=$datasetname]
         (: sometimes there is no label from the SDTM-IG, as the variable is not mentioned in the IG (e.g. additional timing variable), 
         or that the variable is a non-standard variable (NSV), which however should normally go into SUPPQUAL :)
         where $labelfromwebservice and not($labelfromwebservice=$label)
-        return <error rule="CG0303" sdtmigversion="{data($sdtmigversion)}" dataset="{data($name)}" variable="{data($varname)}" rulelastupdate="2020-06-16">Label '{data($label)}' does not correspond to the expected label from the SDTM-IG '{data($labelfromwebservice)}' </error>			
+        return <error rule="CG0303" sdtmigversion="{data($sdtmigversion)}" dataset="{data($name)}" variable="{data($varname)}" rulelastupdate="2020-08-04">Label '{data($label)}' does not correspond to the expected label from the SDTM-IG '{data($labelfromwebservice)}' </error>			
 	
 	

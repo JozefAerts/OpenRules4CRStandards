@@ -15,18 +15,21 @@ See the License for the specific language governing permissions and limitations 
 All EVENTS and INTERVENTIONS domains, except for AE, DS, DV, EX :)
 xquery version "3.0";
 declare namespace def = "http://www.cdisc.org/ns/def/v2.0";
+declare namespace def21 = "http://www.cdisc.org/ns/def/v2.1";
 declare namespace odm="http://www.cdisc.org/ns/odm/v1.3";
 declare namespace data="http://www.cdisc.org/ns/Dataset-XML/v1.0";
 declare namespace xlink="http://www.w3.org/1999/xlink";
 declare namespace xs="http://www.w3.org/2001/XMLSchema";
 declare variable $base external;
 declare variable $define external; 
+declare variable $defineversion external;
 declare variable $datasetname external;
 (: let $base := '/db/fda_submissions/cdiscpilot01/' :)
 (: let $define := 'define_2_0.xml' :)
 let $definedoc := doc(concat($base,$define))
 (: iterate over all EVENTS and INTERVENTIONS studies, except for AE, DS, DV, EX :)
-for $itemgroupdef in $definedoc//odm:ItemGroupDef[upper-case(@def:Class)='EVENTS' or upper-case(@def:Class)='INTERVENTIONS'][not(starts-with(@Name,'AE') or starts-with(@Name,'DS') or starts-with(@Name,'DV') or starts-with(@Name,'EX'))][@Name=$datasetname]
+for $itemgroupdef in $definedoc//odm:ItemGroupDef[upper-case(@def:Class)='EVENTS' or upper-case(@def:Class)='INTERVENTIONS'
+		or upper-case(./def21:Class/@Name)='EVENTS' or upper-case(./def21:Class/@Name)='INTERVENTIONS'][not(starts-with(@Name,'AE') or starts-with(@Name,'DS') or starts-with(@Name,'DV') or starts-with(@Name,'EX'))][@Name=$datasetname]
     let $name := $itemgroupdef/@Name
     (: get the OIDs of --PRESP, --OCCUR and --STAT (when present)  - also get the name :)
     let $prespoid := (
@@ -48,14 +51,20 @@ for $itemgroupdef in $definedoc//odm:ItemGroupDef[upper-case(@def:Class)='EVENTS
     )
     let $statname := concat(substring($name,1,2),'STAT')  (: we need a name, even when the --STAT variable is not defined :)
     (: get the dataset location and document :)
-    let $datasetlocation := $itemgroupdef/def:leaf/@xlink:href
-    let $datasetdoc := doc(concat($base,$datasetlocation))
+	let $datasetlocation := (
+		if($defineversion='2.1') then $itemgroupdef/def21:leaf/@xlink:href
+		else $itemgroupdef/def:leaf/@xlink:href
+	)
+    let $datasetdoc := (
+		if($datasetlocation) then doc(concat($base,$datasetlocation))
+		else ()
+	)
     (: count the number of records for which --PRESP = 'Y' and  --OCCUR = null - 
     if there is at least one, --STAT must be present (i.e. defined) - 
     but only when --PRESP and --OCCUR are defined for the dataset :)
     let $count := count($datasetdoc[$prespoid and $occuroid]//odm:ItemGroupData[odm:ItemData[@ItemOID=$prespoid]/@Value='Y' and not(odm:ItemData[@ItemOID=$occuroid])])
     (: when there is at least such a record, --STAT must be present :)
     where $count>0 and not($statoid)
-    return <error rule="CG0404" dataset="{data($name)}" variable="{data($statname)}" rulelastupdate="2020-06-18">{data($statname)} is not present in dataset, although there are records with {data($prespname)} = 'Y' and  {data($occurname)} = null</error>									
+    return <error rule="CG0404" dataset="{data($name)}" variable="{data($statname)}" rulelastupdate="2020-08-04">{data($statname)} is not present in dataset, although there are records with {data($prespname)} = 'Y' and  {data($occurname)} = null</error>									
 
 	

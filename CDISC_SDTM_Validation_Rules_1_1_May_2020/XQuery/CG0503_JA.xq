@@ -13,12 +13,14 @@ See the License for the specific language governing permissions and limitations 
 
 (: Rule CG0503: When MIDSDTC present in dataset, then MIDS present in dataset :)
 declare namespace def = "http://www.cdisc.org/ns/def/v2.0";
+declare namespace def21 = "http://www.cdisc.org/ns/def/v2.1";
 declare namespace odm="http://www.cdisc.org/ns/odm/v1.3";
 declare namespace data="http://www.cdisc.org/ns/Dataset-XML/v1.0";
 declare namespace xlink="http://www.w3.org/1999/xlink";
 (: "declare variable ... external" allows to pass $base and $define from an external programm :)
 declare variable $base external; 
 declare variable $define external; 
+declare variable $defineversion external;
 (: let $base := 'LZZT_SDTM_Dataset-XML/' :)
 (: let $define := 'define_2_0.xml' :)
 let $definedoc := doc(concat($base,$define))
@@ -39,6 +41,6 @@ for $datasetdef in $definedoc//odm:ItemGroupDef
    	)
    (: return an error when MIDSDTC is present, but but MIDS is not :)
  	where $midstdtcoid and not($midsoid)
-    	return <error rule="CG0503" dataset="{data($name)}" rulelastupdate="2020-06-19">No MIDS variable is present although MIDSDTC is present</error>
+    	return <error rule="CG0503" dataset="{data($name)}" rulelastupdate="2020-08-04">No MIDS variable is present although MIDSDTC is present</error>
 	
 	

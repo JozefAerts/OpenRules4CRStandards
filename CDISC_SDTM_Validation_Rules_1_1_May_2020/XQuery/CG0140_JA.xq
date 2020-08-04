@@ -14,23 +14,31 @@ See the License for the specific language governing permissions and limitations 
 (: Rule CG0140 - When multiple records in SUPPDM where RACE captured then RACE = 'MULTIPLE' :)
 xquery version "3.0";
 declare namespace def = "http://www.cdisc.org/ns/def/v2.0";
+declare namespace def21 = "http://www.cdisc.org/ns/def/v2.1";
 declare namespace odm="http://www.cdisc.org/ns/odm/v1.3";
 declare namespace data="http://www.cdisc.org/ns/Dataset-XML/v1.0";
 declare namespace xlink="http://www.w3.org/1999/xlink";
 (: "declare variable ... external" allows to pass $base and $define from an external programm :)
 declare variable $base external; 
 declare variable $define external; 
+declare variable $defineversion external;
 (: let $base := '/db/fda_submissions/cdisc01/' :)
 (: let $define := 'define2-0-0-example-sdtm.xml' :)
 let $definedoc := doc(concat($base,$define))
 (: Get the DM dataset :)
 let $dmitemgroupdef := $definedoc//odm:ItemGroupDef[@Name='DM']
 (: and the location of the DM dataset :)
-let $dmdatasetlocation := $dmitemgroupdef/def:leaf/@xlink:href
+let $dmdatasetlocation := (
+	if($defineversion='2.1') then $dmitemgroupdef/def21:leaf/@xlink:href
+	else $dmitemgroupdef/def:leaf/@xlink:href
+)
 let $dmdatasetdoc := doc(concat($base,$dmdatasetlocation))
 (: get the location of the SUPPDM dataset :)
 let $suppdmitemgroupdef := $definedoc//odm:ItemGroupDef[@Name='SUPPDM']
-let $suppdmdatasetlocation := $suppdmitemgroupdef/def:leaf/@xlink:href
+let $suppdmdatasetlocation := (
+	if($defineversion='2.1') then $suppdmitemgroupdef/def21:leaf/@xlink:href
+	else $suppdmitemgroupdef/def:leaf/@xlink:href
+)
 let $suppdmdatasetdoc := doc(concat($base,$suppdmdatasetlocation))
 (: in DM, we need the OID of USUBJID and of RACE :)
 let $dmusubjidoid := (
@@ -66,6 +74,6 @@ for $dmrecord in $dmdatasetdoc//odm:ItemGroupData
     (: return <test>{$suppdmcountrace}</test> :)
     (: if there is more than one such record, the value of RACE in DM must be 'MULTIPLE' :)
     where $suppdmcountrace > 1 and not($race='MULTIPLE')
-    return <error rule="CG0140" variable="RACE" dataset="DM" rulelastupdate="2020-06-14" recordnumber="{data($recnum)}">{data($suppdmcountrace)} 'RACE' records for USUBJID='{data($usubjid)}' have been found in SUPPDM, but the value of RACE='{data($race)}' in DM is not 'MULTIPLE'</error>			
+    return <error rule="CG0140" variable="RACE" dataset="DM" rulelastupdate="2020-08-04" recordnumber="{data($recnum)}">{data($suppdmcountrace)} 'RACE' records for USUBJID='{data($usubjid)}' have been found in SUPPDM, but the value of RACE='{data($race)}' in DM is not 'MULTIPLE'</error>			
 		
 	

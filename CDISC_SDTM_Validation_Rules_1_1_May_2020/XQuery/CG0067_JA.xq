@@ -14,24 +14,39 @@ See the License for the specific language governing permissions and limitations 
 (: Rule CG0067: When SS.SSSTRESC = 'DEAD', then there must be a record for that subject in DS with DSDECOD='DEATH' :)
 xquery version "3.0";
 declare namespace def = "http://www.cdisc.org/ns/def/v2.0";
+declare namespace def21 = "http://www.cdisc.org/ns/def/v2.1";
 declare namespace odm="http://www.cdisc.org/ns/odm/v1.3";
 declare namespace data="http://www.cdisc.org/ns/Dataset-XML/v1.0";
 declare namespace xlink="http://www.w3.org/1999/xlink";
 (: "declare variable ... external" allows to pass $base and $define from an external programm :)
 declare variable $base external; 
 declare variable $define external; 
+declare variable $defineversion external;
 (: let $base := '/db/fda_submissions/cdisc01/' :)
 (: let $define := 'define2-0-0-example-sdtm.xml' :)
 let $definedoc := doc(concat($base,$define))
 (: Get the DS dataset :)
 let $dsitemgroupdef := $definedoc//odm:ItemGroupDef[@Name='DS']
 (: and the location of the DS dataset :)
-let $dsdatasetlocation := $dsitemgroupdef/def:leaf/@xlink:href
-let $dsdatasetdoc := doc(concat($base,$dsdatasetlocation))
+let $dsdatasetlocation := (
+	if($defineversion='2.1') then $dsitemgroupdef/def21:leaf/@xlink:href
+	else $dsitemgroupdef/def:leaf/@xlink:href
+)
+let $dsdatasetdoc := (
+	if($dsdatasetlocation) then doc(concat($base,$dsdatasetlocation))
+	else ()
+)
 (: Get the SS (Subject Status) dataset and its location :)
 let $ssitemgroupdef := $definedoc//odm:ItemGroupDef[@Name='SS']
-let $ssdatasetlocation := $ssitemgroupdef/def:leaf/@xlink:href
-let $ssdatasetdoc := doc(concat($base,$ssdatasetlocation))
+let $ssdatasetlocation := (
+	if($defineversion='2.1') then $ssitemgroupdef/def21:leaf/@xlink:href
+	else $ssitemgroupdef/def:leaf/@xlink:href
+)
+(: get the document itself, when defined in the define.xml :)
+let $ssdatasetdoc := (
+	if($ssdatasetlocation) then doc(concat($base,$ssdatasetlocation))
+	else ()
+)
 (: we need the OID of DSDECOD and USUBJID in DS :)
 let $dsdecodoid := (
     for $a in $definedoc//odm:ItemDef[@Name='DSDECOD']/@OID 
@@ -55,13 +70,13 @@ let $ssstresc := (
     return $a
 )
 (: iterate over all records in SS for which SSSTRESC='DEAD' :)
-for $record in $ssdatasetdoc//odm:ItemGroupData[odm:ItemData[@ItemOID=$ssstresc and @Value='DEAD']]
+for $record in $ssdatasetdoc[$ssitemgroupdef]//odm:ItemGroupData[odm:ItemData[@ItemOID=$ssstresc and @Value='DEAD']]
     let $recnumss := $record/@data:ItemGroupDataSeq
     (: get the value of USUBJID for this record :)
     let $ssusubjid := $record/odm:ItemData[@ItemOID=$ssusubjidoid]/@Value
     (: there must be at least one record for this subject in DS for which DSDECOD='DEATH' :)
     let $deathdsrecords := $dsdatasetdoc//odm:ItemGroupData[odm:ItemData[@ItemOID=$dsusubjidoid and @Value=ssusubjid] and odm:ItemData[@ItemOID=$dsdecodoid and @Value='DEATH']]
     where count($deathdsrecords) < 1  (: no DS record found for this subject with DSDECOD='DEATH' :)
-    return <error rule="CG0067" variable="DSDECOD" dataset="DS" rulelastupdate="2020-06-11">A record (record number={data($recnumss)}) for USUBJID='{data($ssusubjid)}' has been found for which SSSTRESC='DEAD' but no record with DSDECOD='DEATH' was found in dataset DS</error>
+    return <error rule="CG0067" variable="DSDECOD" dataset="DS" rulelastupdate="2020-08-04">A record (record number={data($recnumss)}) for USUBJID='{data($ssusubjid)}' has been found for which SSSTRESC='DEAD' but no record with DSDECOD='DEATH' was found in dataset DS</error>
 	
 	

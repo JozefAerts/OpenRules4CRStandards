@@ -14,6 +14,7 @@ See the License for the specific language governing permissions and limitations 
 (: Rule CG0261 - when TSVAL1 != null then TSVAL != null :)
 xquery version "3.0";
 declare namespace def = "http://www.cdisc.org/ns/def/v2.0";
+declare namespace def21 = "http://www.cdisc.org/ns/def/v2.1";
 declare namespace odm="http://www.cdisc.org/ns/odm/v1.3";
 declare namespace data="http://www.cdisc.org/ns/Dataset-XML/v1.0";
 declare namespace xlink="http://www.w3.org/1999/xlink";
@@ -22,11 +23,12 @@ declare namespace functx = "http://www.functx.com";
 (: "declare variable ... external" allows to pass $base and $define from an external programm :)
 declare variable $base external;
 declare variable $define external;
+declare variable $defineversion external;
 (: let $base := '/db/fda_submissions/cdisc01/' :)
 (: let $define := 'define2-0-0-example-sdtm.xml' :)
 let $definedoc := doc(concat($base,$define))
 (: iterate over all TS datasets (there should be only one) :)
-for $itemgroupdef in doc(concat($base,$define))//odm:ItemGroupDef[@Name='TS']
+for $itemgroupdef in $definedoc//odm:ItemGroupDef[@Name='TS']
     (: get the OIDs of TSVAL and of TSVAL1 :)
     let $tsvaloid := (
         for $a in $definedoc//odm:ItemDef[@Name='TSVAL']/@OID
@@ -39,7 +41,10 @@ for $itemgroupdef in doc(concat($base,$define))//odm:ItemGroupDef[@Name='TS']
         return $a
     )
     (: get the location of the dataset :)
-    let $datasetlocation := $itemgroupdef/def:leaf/@xlink:href
+	let $datasetlocation := (
+		if($defineversion='2.1') then $itemgroupdef/def21:leaf/@xlink:href
+		else $itemgroupdef/def:leaf/@xlink:href
+	)
     let $datasetdoc := doc(concat($base,$datasetlocation))
     (: iterate over all records :)
     for $record in $datasetdoc//odm:ItemGroupData
@@ -49,6 +54,6 @@ for $itemgroupdef in doc(concat($base,$define))//odm:ItemGroupDef[@Name='TS']
         let $tsval1 := $record/odm:ItemData[@ItemOID=$tsval1oid]/@Value
         (: when TSVAL1 is populated the TSVAL must be populated :)
         where string-length($tsval1)>0 and not($tsval or string-length($tsval)>0)
-        return <error rule="CG0261" dataset="TS" variable="TSVAL" recordnumber="{data($recnum)}" rulelastupdate="2020-06-15">TSVAL1='{data($tsval1)}' is populated but TSVAL=null</error>			
+        return <error rule="CG0261" dataset="TS" variable="TSVAL" recordnumber="{data($recnum)}" rulelastupdate="2020-08-04">TSVAL1='{data($tsval1)}' is populated but TSVAL=null</error>			
 		
 	

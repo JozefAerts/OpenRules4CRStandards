@@ -18,12 +18,14 @@ Be aware that this assumes that RELREC and SUPPAP never reference AP records.
 Does this however also assume that there are no APxx records in CO? :)
 xquery version "3.0";
 declare namespace def = "http://www.cdisc.org/ns/def/v2.0";
+declare namespace def21 = "http://www.cdisc.org/ns/def/v2.1";
 declare namespace odm="http://www.cdisc.org/ns/odm/v1.3";
 declare namespace data="http://www.cdisc.org/ns/Dataset-XML/v1.0";
 declare namespace xlink="http://www.w3.org/1999/xlink";
 (: "declare variable ... external" allows to pass $base and $define from an external programm :)
 declare variable $base external;
 declare variable $define external; 
+declare variable $defineversion external;
 declare variable $datasetname external;
 (: let $base := '/db/fda_submissions/cdiscpilot01/' :)
 (: let $define := 'define_2_0.xml' :)
@@ -38,7 +40,10 @@ for $itemgroupdef in $definedoc//odm:ItemGroupDef[not(@Name='AP') and not(@Name=
         return $a
     )
     (: get the location of the dataset  :)
-    let $datasetlocation := $itemgroupdef/def:leaf/@xlink:href
+	let $datasetlocation := (
+		if($defineversion='2.1') then $itemgroupdef/def21:leaf/@xlink:href
+		else $itemgroupdef/def:leaf/@xlink:href
+	)
     let $datasetdoc := doc(concat($base,$datasetlocation))
     (: return over all the records that have a value for DOMAIN (this should essentially be all of them?) :)
     for $record in $datasetdoc//odm:ItemGroupData[odm:ItemData[@ItemOID=$domainoid]]
@@ -47,6 +52,6 @@ for $itemgroupdef in $definedoc//odm:ItemGroupDef[not(@Name='AP') and not(@Name=
         let $domainvalue := $record/odm:ItemData[@ItemOID=$domainoid]/@Value
         (: the length of the value must be exactly 2 :)
         where string-length($domainvalue)!=2
-        return <error rule="CG0308" dataset="{data($name)}" variable="DOMAIN" recordnumber="{data($recnum)}" rulelastupdate="2020-06-15">The value for DOMAIN in the dataset does not consist of exactly 2 characters: DOMAIN='{data($domainvalue)}' was found</error>							
+        return <error rule="CG0308" dataset="{data($name)}" variable="DOMAIN" recordnumber="{data($recnum)}" rulelastupdate="2020-08-04">The value for DOMAIN in the dataset does not consist of exactly 2 characters: DOMAIN='{data($domainvalue)}' was found</error>							
 		
 	

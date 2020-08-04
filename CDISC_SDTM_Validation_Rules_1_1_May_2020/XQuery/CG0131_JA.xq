@@ -14,6 +14,7 @@ See the License for the specific language governing permissions and limitations 
 (: Rule CG0131 - DTHFL in ('Y',null) :)
 xquery version "3.0";
 declare namespace def = "http://www.cdisc.org/ns/def/v2.0";
+declare namespace def21 = "http://www.cdisc.org/ns/def/v2.1";
 declare namespace odm="http://www.cdisc.org/ns/odm/v1.3";
 declare namespace data="http://www.cdisc.org/ns/Dataset-XML/v1.0";
 declare namespace xlink="http://www.w3.org/1999/xlink";
@@ -21,12 +22,16 @@ declare namespace functx = "http://www.functx.com";
 (: "declare variable ... external" allows to pass $base and $define from an external programm :)
 declare variable $base external;
 declare variable $define external; 
+declare variable $defineversion external;
 (: let $base := '/db/fda_submissions/cdiscpilot01/' :)
 (: let $define := 'define_2_0.xml' :)
 let $definedoc := doc(concat($base,$define))
 (: Get the DM dataset - we use a "for" although there can only be one :)
 for $dmitemgroupdef in $definedoc//odm:ItemGroupDef[@Name='DM']
-    let $datasetname := $dmitemgroupdef/def:leaf/@xlink:href
+	let $datasetname := (
+		if($defineversion='2.1') then $dmitemgroupdef/def21:leaf/@xlink:href
+		else $dmitemgroupdef/def:leaf/@xlink:href
+	)
     let $dmdatasetlocation := concat($base,$datasetname)
     let $dmdatasetdoc := doc($dmdatasetlocation)
     (: get the OID of DTHFL in DM :)
@@ -43,6 +48,6 @@ for $dmitemgroupdef in $definedoc//odm:ItemGroupDef[@Name='DM']
         (: as we iterate over all records in the DM dataset for which there IS a value for DTHFL, 
         we only need to check whether the value is 'Y' :)
         where not($dthflvalue='Y')
-             return <error rule="CG0131" dataset="DM" variable="DTHFL" rulelastupdate="2020-06-14" recordnumber="{data($recnum)}">Invalid value for DTHFL, value='{data($dthflvalue)}' is expected to be 'Y' or null</error>			
+             return <error rule="CG0131" dataset="DM" variable="DTHFL" rulelastupdate="2020-08-04" recordnumber="{data($recnum)}">Invalid value for DTHFL, value='{data($dthflvalue)}' is expected to be 'Y' or null</error>			
 		
 	

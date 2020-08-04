@@ -13,19 +13,24 @@ See the License for the specific language governing permissions and limitations 
 
 (: Rule CG0501: When RELMIDS present in dataset present in dataset, then TM must exist :)
 declare namespace def = "http://www.cdisc.org/ns/def/v2.0";
+declare namespace def21 = "http://www.cdisc.org/ns/def/v2.1";
 declare namespace odm="http://www.cdisc.org/ns/odm/v1.3";
 declare namespace data="http://www.cdisc.org/ns/Dataset-XML/v1.0";
 declare namespace xlink="http://www.w3.org/1999/xlink";
 (: "declare variable ... external" allows to pass $base and $define from an external programm :)
 declare variable $base external; 
 declare variable $define external; 
+declare variable $defineversion external;
 (: let $base := 'LZZT_SDTM_Dataset-XML/' :)
 (: let $define := 'define_2_0.xml' :)
 let $definedoc := doc(concat($base,$define))
 (: get the TM dataset definition, if it exists :)
 let $tmdatasetdef := $definedoc//odm:ItemGroupDef[@Name='TM']
 (: get its location, and the dataset itsels (when it exists) :)
-let $tmdatasetlocation := $tmdatasetdef/def:leaf/@xlink:href
+let $tmdatasetlocation := (
+	if($defineversion='2.1') then $tmdatasetdef/def21:leaf/@xlink:href
+	else $tmdatasetdef/def:leaf/@xlink:href
+)
 let $tmdatasetdoc := (
 	if($tmdatasetlocation) then doc(concat($base,$tmdatasetlocation))
     else ()
@@ -42,6 +47,6 @@ for $datasetdef in $definedoc//odm:ItemGroupDef[not(@Name='TM')]
    (: return an error when MIDS is present, but TM has not been declared, 
    	or could not eb found :)
  	where $relmidsoid and (not($tmdatasetlocation) or not(doc-available($tmdatasetdoc)))
-    	return <error rule="CG0502" dataset="{data($name)}" rulelastupdate="2020-06-19">No TM dataset was declared or found although dataset {data($name)} has a RELMIDS variable</error>	
+    	return <error rule="CG0502" dataset="{data($name)}" rulelastupdate="2020-08-04">No TM dataset was declared or found although dataset {data($name)} has a RELMIDS variable</error>	
 	
 	

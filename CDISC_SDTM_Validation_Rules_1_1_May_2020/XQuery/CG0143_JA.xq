@@ -16,6 +16,7 @@ See the License for the specific language governing permissions and limitations 
 The SDTM-IG states "EXAMPLES of protocol milestones: INFORMED CONSENT OBTAINED ..." :)
 xquery version "3.0";
 declare namespace def = "http://www.cdisc.org/ns/def/v2.0";
+declare namespace def21 = "http://www.cdisc.org/ns/def/v2.1";
 declare namespace odm="http://www.cdisc.org/ns/odm/v1.3";
 declare namespace data="http://www.cdisc.org/ns/Dataset-XML/v1.0";
 declare namespace xlink="http://www.w3.org/1999/xlink";
@@ -23,6 +24,7 @@ declare namespace functx = "http://www.functx.com";
 (: "declare variable ... external" allows to pass $base and $define from an external programm :)
 declare variable $base external; 
 declare variable $define external; 
+declare variable $defineversion external;
 (: sorting function - also sorts dates :)
 declare function functx:sort
   ( $seq as item()* )  as item()* {
@@ -37,7 +39,10 @@ let $definedoc := doc(concat($base,$define))
 (: Get the DM dataset :)
 let $dmitemgroupdef := $definedoc//odm:ItemGroupDef[@Name='DM']
 (: and the location of the DM dataset :)
-let $dmdatasetlocation := $dmitemgroupdef/def:leaf/@xlink:href
+let $dmdatasetlocation := (
+	if($defineversion='2.1') then $dmitemgroupdef/def21:leaf/@xlink:href
+	else $dmitemgroupdef/def:leaf/@xlink:href
+)
 let $dmdatasetdoc := doc(concat($base,$dmdatasetlocation))
 (: get the OID of RFICDTC in DM :)
 let $rficdtcoid := (
@@ -53,7 +58,10 @@ let $dmusubjidoid := (
 )
 (: get the DS dataset and its location :)
 let $dsitemgroupdef := $definedoc//odm:ItemGroupDef[@Name='DS']
-let $dsdatasetlocation := $dsitemgroupdef/def:leaf/@xlink:href
+let $dsdatasetlocation := (
+	if($defineversion='2.1') then $dsitemgroupdef/def21:leaf/@xlink:href
+	else $dsitemgroupdef/def:leaf/@xlink:href
+)
 let $dsdatasetdoc := doc(concat($base,$dsdatasetlocation))
 (: and the OID of DSSTDTC :)
 let $dsstdtcoid := (
@@ -79,6 +87,6 @@ for $dmrecord in $dmdatasetdoc//odm:ItemGroupData[odm:ItemData[@ItemOID=$rficdtc
     let $earliestdsstdtc := functx:sort($dsstdtcvalues)[1]
     (: RFICDTC = earliest DS.DSSTDTC :)
     where $rficdtc and not($rficdtc=$earliestdsstdtc)
-    return <error rule="CG0143" variable="RFICDTC" dataset="DM" rulelastupdate="2020-06-14" recordnumber="{data($recnum)}">RFICDTC='{data($rficdtc)}' does not correspond to the earliest DSSDTC='{data($earliestdsstdtc)}' value</error>			
+    return <error rule="CG0143" variable="RFICDTC" dataset="DM" rulelastupdate="2020-08-04" recordnumber="{data($recnum)}">RFICDTC='{data($rficdtc)}' does not correspond to the earliest DSSDTC='{data($earliestdsstdtc)}' value</error>			
 		
 	

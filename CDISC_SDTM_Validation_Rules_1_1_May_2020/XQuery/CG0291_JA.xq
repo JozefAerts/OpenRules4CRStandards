@@ -14,6 +14,7 @@ See the License for the specific language governing permissions and limitations 
 (: Rule CG0291 When TSVALNF = null then TSVAL not populated with values or synonyms of values in the ISO 21090 null flavor codelist (or other terms that can be represented as null flavors)  :)
 xquery version "3.0";
 declare namespace def = "http://www.cdisc.org/ns/def/v2.0";
+declare namespace def21 = "http://www.cdisc.org/ns/def/v2.1";
 declare namespace odm="http://www.cdisc.org/ns/odm/v1.3";
 declare namespace data="http://www.cdisc.org/ns/Dataset-XML/v1.0";
 declare namespace xlink="http://www.w3.org/1999/xlink";
@@ -28,13 +29,14 @@ declare function functx:is-value-in-sequence
 (: "declare variable ... external" allows to pass $base and $define from an external programm :)
 declare variable $base external;
 declare variable $define external;
+declare variable $defineversion external;
 (: let $base := '/db/fda_submissions/cdisc01/' :)
 (: let $define := 'define2-0-0-example-sdtm.xml' :)
 let $definedoc := doc(concat($base,$define))
 (: the list of allowed null flavor values - ISO21090 :)
 let $nfvalues := ('NI','OTH','NINF','PINF','UNK','ASKU','NAV','NASK','TRC','MSK','NA','QS')
 (: iterate over all TS datasets (there should be only one) :)
-for $itemgroup in doc(concat($base,$define))//odm:ItemGroupDef[@Name='TS']
+for $itemgroup in $definedoc//odm:ItemGroupDef[@Name='TS']
     (: Get the OID for the TSVAL and TSVALNF variables :)
     let $tsvaloid := (
         for $a in $definedoc//odm:ItemDef[@Name='TSVAL']/@OID
@@ -47,7 +49,10 @@ for $itemgroup in doc(concat($base,$define))//odm:ItemGroupDef[@Name='TS']
         return $a
     )
     (: get the dataset :)
-    let $datasetlocation := $itemgroup/def:leaf/@xlink:href
+	let $datasetlocation := (
+		if($defineversion='2.1') then $itemgroup/def21:leaf/@xlink:href
+		else $itemgroup/def:leaf/@xlink:href
+	)
     let $datasetdoc := doc(concat($base,$datasetlocation))
     (: iterate over all records in the dataset for which TSVALNF is null :)
     for $record in $datasetdoc//odm:ItemGroupData[not(odm:ItemData[@ItemOID=$tsvalnfoid])]
@@ -56,6 +61,6 @@ for $itemgroup in doc(concat($base,$define))//odm:ItemGroupDef[@Name='TS']
         let $tsval := $record/odm:ItemData[@ItemOID=$tsvaloid]/@Value
         (: TSVAL is not allowed to come out of the list of ISO-21090 null flavors :)
         where functx:is-value-in-sequence($tsval,$nfvalues)
-        return <error rule="CG0291" dataset="TS" variable="TSVAL" recordnumber="{data($recnum)}" rulelastupdate="2020-06-15">As TSVALNF=null, TSVAL={data($tsval)} is not allowed to come out of the list of ISO-21090 null flavors ({data($nfvalues)}</error>			
+        return <error rule="CG0291" dataset="TS" variable="TSVAL" recordnumber="{data($recnum)}" rulelastupdate="2020-08-04">As TSVALNF=null, TSVAL={data($tsval)} is not allowed to come out of the list of ISO-21090 null flavors ({data($nfvalues)}</error>			
 		
 	

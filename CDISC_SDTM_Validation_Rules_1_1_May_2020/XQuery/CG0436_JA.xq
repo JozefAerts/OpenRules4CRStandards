@@ -15,6 +15,7 @@ See the License for the specific language governing permissions and limitations 
 (: Rule CG0436 - --SOC = MedDRA primary system organ class   :)
 xquery version "3.0";
 declare namespace def = "http://www.cdisc.org/ns/def/v2.0";
+declare namespace def21 = "http://www.cdisc.org/ns/def/v2.1";
 declare namespace odm="http://www.cdisc.org/ns/odm/v1.3";
 declare namespace data="http://www.cdisc.org/ns/Dataset-XML/v1.0";
 declare namespace xlink="http://www.w3.org/1999/xlink";
@@ -28,6 +29,7 @@ declare function functx:is-value-in-sequence
 } ;
 declare variable $base external;
 declare variable $define external; 
+declare variable $defineversion external;
 declare variable $meddrabase external; 
 (: let $base := '/db/fda_submissions/cdisc01/' :)
 (: let $define := 'define2-0-0-example-sdtm.xml' :)
@@ -54,8 +56,14 @@ for $itemgroup in $definedoc//odm:ItemGroupDef[@Name='AE' or @Name='MH' or @Name
     )
     let $socname := $definedoc//odm:ItemDef[@OID=$socoid]/@Name
     (: get the dataset location :)
-    let $datasetlocation := $itemgroup/def:leaf/@xlink:href
-    let $datasetdoc := doc(concat($base,$datasetlocation))
+	let $datasetname := (
+		if($defineversion='2.1') then $itemgroup/def21:leaf/@xlink:href
+		else $itemgroup/def:leaf/@xlink:href
+	)
+    let $datasetdoc := (
+		if($datasetname) then doc(concat($base,$datasetname))
+		else ()
+	)
     (: iterate over all the records in the dataset :)
     for $record in $datasetdoc//odm:ItemGroupData
         let $recnum := $record/@data:ItemGroupDataSeq
@@ -63,6 +71,6 @@ for $itemgroup in $definedoc//odm:ItemGroupDef[@Name='AE' or @Name='MH' or @Name
         let $socvalue := $record/odm:ItemData[@ItemOID=$socoid]/@Value
         (: give an error when the SOC value is not in the list of the SOC terms in original case :)
         where $socvalue and not(functx:is-value-in-sequence($socvalue,$socterms)) 
-        return <error rule="CG0436" dataset="{data($name)}" variable="{data($socname)}" recordnumber="{data($recnum)}" rulelastupdate="2020-06-19">Value '{data($socvalue)}' for {data($socname)} is not found as a MedDRA primary system organ class in the MedDRA dictionary</error>						
+        return <error rule="CG0436" dataset="{data($name)}" variable="{data($socname)}" recordnumber="{data($recnum)}" rulelastupdate="2020-08-04">Value '{data($socvalue)}' for {data($socname)} is not found as a MedDRA primary system organ class in the MedDRA dictionary</error>						
 		
 	

@@ -14,18 +14,23 @@ See the License for the specific language governing permissions and limitations 
 (: Rule CG0247 - TAETORD is unique within an ARM :)
 xquery version "3.0";
 declare namespace def = "http://www.cdisc.org/ns/def/v2.0";
+declare namespace def21 = "http://www.cdisc.org/ns/def/v2.1";
 declare namespace odm="http://www.cdisc.org/ns/odm/v1.3";
 declare namespace data="http://www.cdisc.org/ns/Dataset-XML/v1.0";
 declare namespace xlink="http://www.w3.org/1999/xlink";
 (: "declare variable ... external" allows to pass $base and $define from an external programm :)
 declare variable $base external;
 declare variable $define external;
+declare variable $defineversion external;
 (: let $base := '/db/fda_submissions/cdisc01/' :)
 (: let $define := 'define2-0-0-example-sdtm.xml' :)
 let $definedoc := doc(concat($base,$define))
 (: Get the TA datasets :)
 let $tadatasetdef := $definedoc//odm:ItemGroupDef[@Name='TA']
-let $tadatasetname := $tadatasetdef/def:leaf/@xlink:href
+let $tadatasetname := (
+	if($defineversion='2.1') then $tadatasetdef/def21:leaf/@xlink:href
+	else $tadatasetdef/def:leaf/@xlink:href
+)
 let $tadatasetdoc := doc(concat($base,$tadatasetname))
 (: also need to find out the OID of ARM and of TAETORD :)
 let $armoid := (
@@ -51,6 +56,6 @@ for $record in $tadatasetdoc//odm:ItemGroupData
         let $taetord2 := $recordnext/odm:ItemData[@ItemOID=$taetordoid]/@Value
         (: give an error when both values of TAETORD are equal :)
         where $taetord=$taetord2
-        return <error rule="CG0247" dataset="TA" variable="TAETORD" rulelastupdate="2020-06-15" recordnumber="{data($recnum)}">Records {data($recnum)} and {data($recnum2)} have the same value for ARM='{data($arm)}' and TAETORD={data($taetord)}</error>
+        return <error rule="CG0247" dataset="TA" variable="TAETORD" rulelastupdate="2020-08-04" recordnumber="{data($recnum)}">Records {data($recnum)} and {data($recnum2)} have the same value for ARM='{data($arm)}' and TAETORD={data($taetord)}</error>
 		
 	

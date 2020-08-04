@@ -13,17 +13,19 @@ See the License for the specific language governing permissions and limitations 
 
 xquery version "3.0";
 declare namespace def = "http://www.cdisc.org/ns/def/v2.0";
+declare namespace def21 = "http://www.cdisc.org/ns/def/v2.1";
 declare namespace odm="http://www.cdisc.org/ns/odm/v1.3";
 declare namespace data="http://www.cdisc.org/ns/Dataset-XML/v1.0";
 declare namespace xlink="http://www.w3.org/1999/xlink";
 (: "declare variable ... external" allows to pass $base and $define from an external programm :)
 declare variable $base external;
 declare variable $define external; 
+declare variable $defineversion external;
 (: let $base := 'LZZT_SDTM_Dataset-XML/' :)
 (: let $define := 'define_2_0.xml' :)
 let $definedoc := doc(concat($base,$define)) 
 (: Iterate over all datasets that are defined as "Findings" in the define.xml  :)
-for $findingsitemgroupdef in $definedoc//odm:ItemGroupDef[upper-case(@def:Class)='FINDINGS']
+for $findingsitemgroupdef in $definedoc//odm:ItemGroupDef[upper-case(@def:Class)='FINDINGS' or upper-case(def21:Class/@Name)='FINDINGS']
 	let $name := $findingsitemgroupdef/@Name
     (: Get the OID of any "--TESTCDC" (when present) :)
     let $testcdoid := (
@@ -33,6 +35,6 @@ for $findingsitemgroupdef in $definedoc//odm:ItemGroupDef[upper-case(@def:Class)
     )
     (: Give an error when no --TESTCD variable was found  :)
     where not($testcdoid)
-    return <error rule="CG0320" dataset="{data($name)}" rulelastupdate="2020-06-15">No --TESTCD variable is present in custom Findings domain dataset {data($name)}</error>			
+    return <error rule="CG0320" dataset="{data($name)}" rulelastupdate="2020-08-04">No --TESTCD variable is present in custom Findings domain dataset {data($name)}</error>			
 		
 	

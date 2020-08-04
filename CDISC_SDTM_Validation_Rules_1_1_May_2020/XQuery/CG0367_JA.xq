@@ -14,6 +14,7 @@ See the License for the specific language governing permissions and limitations 
 (: Rule CG0367 - When RSUBJID !=null and RSUBJID != POOLID then RSUBJID = DM.USUBJID :)
 xquery version "3.0";
 declare namespace def = "http://www.cdisc.org/ns/def/v2.0";
+declare namespace def21 = "http://www.cdisc.org/ns/def/v2.1";
 declare namespace odm="http://www.cdisc.org/ns/odm/v1.3";
 declare namespace data="http://www.cdisc.org/ns/Dataset-XML/v1.0";
 declare namespace xlink="http://www.w3.org/1999/xlink";
@@ -28,6 +29,7 @@ declare function functx:is-value-in-sequence
 (: "declare variable ... external" allows to pass $base and $define from an external programm :)
 declare variable $base external;
 declare variable $define external;
+declare variable $defineversion external;
 (: let $base := '/db/fda_submissions/cdisc01/' :)
 (: let $define := 'define2-0-0-example-sdtm.xml' :)
 let $definedoc := doc(concat($base,$define)) 
@@ -40,7 +42,10 @@ let $usubjidoid := (
     return $a
 )
 (: get the DM dataset location and the document :)
-let $dmdatasetlocation := $dmitemgroupdef/def:leaf/@xlink:href
+let $dmdatasetlocation := (
+	if($defineversion='2.1') then $dmitemgroupdef/def21:leaf/@xlink:href
+	else $dmitemgroupdef/def:leaf/@xlink:href
+)
 let $dmdatasetdoc := doc(concat($base,$dmdatasetlocation))
 (: now get all the values of USUBJID in DM :)
 let $usubjidvalues := $dmdatasetdoc//odm:ItemGroupData/odm:ItemData[@ItemOID=$usubjidoid]/@Value  (: returns all values as a sequence/array :)
@@ -59,7 +64,10 @@ for $apitemgroupdef in $definedoc//odm:ItemGroupDef[starts-with(@Name,'AP')]
         return $a
     )
     (: and the location and document of the dataset :)
-    let $apdatasetlocation := $apitemgroupdef/def:leaf/@xlink:href
+	let $apdatasetlocation := (
+		if($defineversion='2.1') then $apitemgroupdef/def21:leaf/@xlink:href
+		else $apitemgroupdef/def:leaf/@xlink:href
+	)
     let $apdatasetdoc := doc(concat($base,$apdatasetlocation))
     (: iterate over all records for which RSUBJID !=null and RSUBJID != POOLID :)
     for $record in $apdatasetdoc//odm:ItemGroupData[odm:ItemData[@ItemOID=$rsubjidoid] and odm:ItemData[@ItemOID=$poolidoid] 
@@ -70,6 +78,6 @@ for $apitemgroupdef in $definedoc//odm:ItemGroupDef[starts-with(@Name,'AP')]
         let $poolid := odm:ItemData[@ItemOID=$poolidoid]/@Value
         (: RSUBJID value must also be present in DM as USUBJID :)
         where not(functx:is-value-in-sequence($rsubjid,$usubjidvalues))
-        return <error rule="CG0367" dataset="{data($name)}" variable="RSUBJID" recordnumber="{data($recnum)}" rulelastupdate="2020-06-17">Value of RSUBJID='{data($rsubjid)}' was not found as USUBJID in DM dataset although RSUBJID != POOLID='{data($poolid)}'</error>			
+        return <error rule="CG0367" dataset="{data($name)}" variable="RSUBJID" recordnumber="{data($recnum)}" rulelastupdate="2020-08-04">Value of RSUBJID='{data($rsubjid)}' was not found as USUBJID in DM dataset although RSUBJID != POOLID='{data($poolid)}'</error>			
 		
 	

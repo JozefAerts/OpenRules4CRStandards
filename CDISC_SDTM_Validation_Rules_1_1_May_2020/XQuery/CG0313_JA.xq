@@ -16,18 +16,21 @@ INTERVENTIONS, FINDINGS, EVENTS :)
 (: NOT applicable to SDTM-IG 3.3. See rule CG0554 for SDTM-IG 3.3 :)
 xquery version "3.0";
 declare namespace def = "http://www.cdisc.org/ns/def/v2.0";
+declare namespace def21 = "http://www.cdisc.org/ns/def/v2.1";
 declare namespace odm="http://www.cdisc.org/ns/odm/v1.3";
 declare namespace data="http://www.cdisc.org/ns/Dataset-XML/v1.0";
 declare namespace xlink="http://www.w3.org/1999/xlink";
 (: "declare variable ... external" allows to pass $base and $define from an external programm :)
 declare variable $base external;
 declare variable $define external; 
+declare variable $defineversion external;
 (: let $base := '/db/fda_submissions/cdisc01/' :)
 (: let $define := 'define2-0-0-example-sdtm.xml' :)
 let $definedoc := doc(concat($base,$define)) 
 (: iterate over all datasets definitions of the general observation classes:
 INTERVENTIONS, FINDINGS, EVENTS :)
-for $itemgroupdef in $definedoc//odm:ItemGroupDef[@def:Class='INTERVENTIONS' or @def:Class='FINDINGS' or @def:Class='EVENTS']
+for $itemgroupdef in $definedoc//odm:ItemGroupDef[upper-case(@def:Class)='INTERVENTIONS' or upper-case(@def:Class)='FINDINGS' or upper-case(@def:Class)='EVENTS' 
+		or upper-case(./def21:Class/@Name)='INTERVENTIONS' or upper-case(./def21:Class/@Name)='FINDINGS' or upper-case(./def21:Class/@Name)='EVENTS' ]
     let $name := $itemgroupdef/@Name
     (: get the OID of the variables STUDYID, USUBJID, POOLID, DOMAIN and --SEQ :)
     let $studyidoid := (
@@ -58,6 +61,6 @@ for $itemgroupdef in $definedoc//odm:ItemGroupDef[@def:Class='INTERVENTIONS' or 
     (: test the presence :)
     (: TODO: can we test separately for each? :)
     where not($studyidoid) or (not($usubjidoid) and not($poolidoid)) or not($domainoid) or not($seqoid)
-    return <error rule="CG0313" dataset="{data($name)}" rulelastupdate="2020-06-15">One of the required identifier variables STUDYID, USUBJID/POOLID, DOMAIN, or --SEQ is missing</error>							
+    return <error rule="CG0313" dataset="{data($name)}" rulelastupdate="2020-08-04">One of the required identifier variables STUDYID, USUBJID/POOLID, DOMAIN, or --SEQ is missing</error>							
 		
 	

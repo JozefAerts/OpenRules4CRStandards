@@ -14,59 +14,64 @@ See the License for the specific language governing permissions and limitations 
 (: Rule CG0041: When AESER = 'Y' then AESCAN = 'Y' or AESCONG = 'Y' or AESDISAB = 'Y' or AESDTH = 'Y' or AESHOSP = 'Y' or AESLIFE = 'Y' or AESOD = 'Y' or AESMIE = 'Y' :)
 xquery version "3.0";
 declare namespace def = "http://www.cdisc.org/ns/def/v2.0";
+declare namespace def21 = "http://www.cdisc.org/ns/def/v2.1";
 declare namespace odm="http://www.cdisc.org/ns/odm/v1.3";
 declare namespace data="http://www.cdisc.org/ns/Dataset-XML/v1.0";
 declare namespace xlink="http://www.w3.org/1999/xlink";
 (: "declare variable ... external" allows to pass $base and $define from an external programm :)
 declare variable $base external;
 declare variable $define external; 
+declare variable $defineversion external;
 (: let $base := '/db/fda_submissions/cdisc01/' :)
 (: let $define := 'define2-0-0-example-sdtm.xml' :)
-
+let $definedoc := doc(concat($base,$define))
 (: iterate over the AE datasets (for the case there is more than 1) :)
-for $dataset in doc(concat($base,$define))//odm:ItemGroupDef[@Domain='AE' or starts-with(@Name,'AE')]
+for $dataset in $definedoc//odm:ItemGroupDef[@Domain='AE' or starts-with(@Name,'AE')]
     let $name := $dataset/@Name
-    let $datasetname := $dataset/def:leaf/@xlink:href
+	let $datasetname := (
+		if($defineversion='2.1') then $dataset/def21:leaf/@xlink:href
+		else $dataset/def:leaf/@xlink:href
+	)
     let $datasetlocation := concat($base,$datasetname)
     (: and get the OIDs of AESER, AESCAN, AESCONG, AESDISAB, AESDTH, AESHOSP, AESLIFE and AESMIE :)
     let $aeseroid := (
-        for $a in doc(concat($base,$define))//odm:ItemDef[@Name='AESER']/@OID 
-        where $a = doc(concat($base,$define))//odm:ItemGroupDef[@Name=$name]/odm:ItemRef/@ItemOID
+        for $a in $definedoc//odm:ItemDef[@Name='AESER']/@OID 
+        where $a = $definedoc//odm:ItemGroupDef[@Name=$name]/odm:ItemRef/@ItemOID
         return $a
     )
     let $aescanoid := (
-        for $a in doc(concat($base,$define))//odm:ItemDef[@Name='AESCAN']/@OID 
-        where $a = doc(concat($base,$define))//odm:ItemGroupDef[@Name=$name]/odm:ItemRef/@ItemOID
+        for $a in $definedoc//odm:ItemDef[@Name='AESCAN']/@OID 
+        where $a = $definedoc//odm:ItemGroupDef[@Name=$name]/odm:ItemRef/@ItemOID
         return $a
     )
     let $aescongoid := (
-        for $a in doc(concat($base,$define))//odm:ItemDef[@Name='AESCONG']/@OID 
-        where $a = doc(concat($base,$define))//odm:ItemGroupDef[@Name=$name]/odm:ItemRef/@ItemOID
+        for $a in $definedoc//odm:ItemDef[@Name='AESCONG']/@OID 
+        where $a = $definedoc//odm:ItemGroupDef[@Name=$name]/odm:ItemRef/@ItemOID
         return $a    
     )
     let $aesdisaboid := (
-        for $a in doc(concat($base,$define))//odm:ItemDef[@Name='AESDISAB']/@OID 
-        where $a = doc(concat($base,$define))//odm:ItemGroupDef[@Name=$name]/odm:ItemRef/@ItemOID
+        for $a in $definedoc//odm:ItemDef[@Name='AESDISAB']/@OID 
+        where $a = $definedoc//odm:ItemGroupDef[@Name=$name]/odm:ItemRef/@ItemOID
         return $a 
     )
     let $aesdthoid := (
-        for $a in doc(concat($base,$define))//odm:ItemDef[@Name='AESDTH']/@OID 
-        where $a = doc(concat($base,$define))//odm:ItemGroupDef[@Name=$name]/odm:ItemRef/@ItemOID
+        for $a in $definedoc//odm:ItemDef[@Name='AESDTH']/@OID 
+        where $a = $definedoc//odm:ItemGroupDef[@Name=$name]/odm:ItemRef/@ItemOID
         return $a 
     )
     let $aeshospoid := (
-        for $a in doc(concat($base,$define))//odm:ItemDef[@Name='AESHOSP']/@OID 
-        where $a = doc(concat($base,$define))//odm:ItemGroupDef[@Name=$name]/odm:ItemRef/@ItemOID
+        for $a in $definedoc//odm:ItemDef[@Name='AESHOSP']/@OID 
+        where $a = $definedoc//odm:ItemGroupDef[@Name=$name]/odm:ItemRef/@ItemOID
         return $a 
     )
     let $aeslifeoid := (
-        for $a in doc(concat($base,$define))//odm:ItemDef[@Name='AESLIFE']/@OID 
-        where $a = doc(concat($base,$define))//odm:ItemGroupDef[@Name=$name]/odm:ItemRef/@ItemOID
+        for $a in $definedoc//odm:ItemDef[@Name='AESLIFE']/@OID 
+        where $a = $definedoc//odm:ItemGroupDef[@Name=$name]/odm:ItemRef/@ItemOID
         return $a 
     )
     let $aesmieoid := (
-        for $a in doc(concat($base,$define))//odm:ItemDef[@Name='AESMIE']/@OID 
-        where $a = doc(concat($base,$define))//odm:ItemGroupDef[@Name=$name]/odm:ItemRef/@ItemOID
+        for $a in $definedoc//odm:ItemDef[@Name='AESMIE']/@OID 
+        where $a = $definedoc//odm:ItemGroupDef[@Name=$name]/odm:ItemRef/@ItemOID
         return $a 
     )
     (: iterate over all the records :)
@@ -85,6 +90,6 @@ for $dataset in doc(concat($base,$define))//odm:ItemGroupDef[@Domain='AE' or sta
         (: when of AESCAN, AESCONG, AESDISAB, AESDTH, AESHOSP, AESLIFE and AESMIE must have the value 'Y'
         then AESER must be 'Y':)
         where ($aescanvalue='Y' or $aescongvalue='Y' or $aesdisabvalue='Y' or $aesdthvalue='Y' or $aeshospvalue='Y' or $aeslifevalue='Y' or $aesmievalue='Y') and not($aeservalue = 'Y')
-        return <error rule="CG0041" dataset="{data($name)}" variable="AESER" rulelastupdate="2020-06-11" recordnumber="{data($recnum)}">AESER is not 'Y' although one of the qualifiers AESCAN, AESCONG, AESDISAB, AESDTH, AESHOSP, AESLIFE or AESMIE has been set to 'Y' in dataset {data($datasetname)}</error>	
+        return <error rule="CG0041" dataset="{data($name)}" variable="AESER" rulelastupdate="2020-08-04" recordnumber="{data($recnum)}">AESER is not 'Y' although one of the qualifiers AESCAN, AESCONG, AESDISAB, AESDTH, AESHOSP, AESLIFE or AESMIE has been set to 'Y' in dataset {data($datasetname)}</error>	
 		
 	

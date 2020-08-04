@@ -15,19 +15,24 @@ See the License for the specific language governing permissions and limitations 
  Applicable to all EVENTS domain :)
 xquery version "3.0";
 declare namespace def = "http://www.cdisc.org/ns/def/v2.0";
+declare namespace def21 = "http://www.cdisc.org/ns/def/v2.1";
 declare namespace odm="http://www.cdisc.org/ns/odm/v1.3";
 declare namespace data="http://www.cdisc.org/ns/Dataset-XML/v1.0";
 declare namespace xlink="http://www.w3.org/1999/xlink";
 (: "declare variable ... external" allows to pass $base and $define from an external programm :)
 declare variable $base external;
 declare variable $define external; 
+declare variable $defineversion external;
 (: let $base := '/db/fda_submissions/cdisc01/' :)
 (: let $define := 'define2-0-0-example-sdtm.xml' :)
 let $definedoc := doc(concat($base,$define))
 (: iterate over all the EVENTS datasets :)
-for $itemgroupdef in doc(concat($base,$define))//odm:ItemGroupDef[upper-case(@def:Class)='EVENTS']
+for $itemgroupdef in $definedoc//odm:ItemGroupDef[upper-case(@def:Class)='EVENTS' or upper-case(./def21:Class/@Name)='EVENTS']
     let $name := $itemgroupdef/@Name
-    let $datasetname := $itemgroupdef/def:leaf/@xlink:href
+	let $datasetname := (
+		if($defineversion='2.1') then $itemgroupdef/def21:leaf/@xlink:href
+		else $itemgroupdef/def:leaf/@xlink:href
+	)
     let $datasetlocation := concat($base,$datasetname)
     (: get the OIDs of the --PTCD and --DECOD variables (if any) :)
     let $ptcdoid := (
@@ -35,7 +40,7 @@ for $itemgroupdef in doc(concat($base,$define))//odm:ItemGroupDef[upper-case(@de
         where $a = $itemgroupdef/odm:ItemRef/@ItemOID
         return $a
     )
-    let $ptcdname := doc(concat($base,$define))//odm:ItemDef[@OID=$ptcdoid]/@Name
+    let $ptcdname := $definedoc//odm:ItemDef[@OID=$ptcdoid]/@Name
     let $decodoid := (
         for $a in $definedoc//odm:ItemDef[ends-with(@Name,'DECOD')]/@OID 
         where $a = $itemgroupdef/odm:ItemRef/@ItemOID
@@ -49,5 +54,5 @@ for $itemgroupdef in doc(concat($base,$define))//odm:ItemGroupDef[upper-case(@de
         let $ptcdvalue := $record/odm:ItemData[@ItemOID=$ptcdoid]/@Value
         let $decodvalue := $record/odm:ItemData[@ItemOID=$decodoid]/@Value
         where not($decodvalue)  (: there is no --DECOD value :)
-        return <error rule="CG0050" dataset="{data($name)}" rulelastupdate="2020-06-09" recordnumber="{data($recnum)}">Missing value for {data($decodname)}, when {data($ptcdname)} is populated (not null), value = {data($ptcdvalue)} in dataset {data($name)}</error>				
+        return <error rule="CG0050" dataset="{data($name)}" rulelastupdate="2020-08-04" recordnumber="{data($recnum)}">Missing value for {data($decodname)}, when {data($ptcdname)} is populated (not null), value = {data($ptcdvalue)} in dataset {data($name)}</error>				
 		

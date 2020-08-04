@@ -14,18 +14,23 @@ See the License for the specific language governing permissions and limitations 
 (: Rule CG0222 - When --ENDTC and DM.RFSTDTC both contain complete values in their date portion then --ENDY is properly calculated per study day algorithm :)
 xquery version "3.0";
 declare namespace def = "http://www.cdisc.org/ns/def/v2.0";
+declare namespace def21 = "http://www.cdisc.org/ns/def/v2.1";
 declare namespace odm="http://www.cdisc.org/ns/odm/v1.3";
 declare namespace data="http://www.cdisc.org/ns/Dataset-XML/v1.0";
 declare namespace xlink="http://www.w3.org/1999/xlink"; 
 (: "declare variable ... external" allows to pass $base and $define from an external programm :)
 declare variable $base external;
 declare variable $define external; 
-declare variable $domain external;
+declare variable $defineversion external;
+declare variable $datasetname external;
 (: let $base := '/db/fda_submissions/cdisc01/'  :)
 (: let $define := 'define2-0-0-example-sdtm.xml' :)
 let $definedoc := doc(concat($base,$define))
 (: Get the location of the DM dataset :)
-let $dmdataset := $definedoc//odm:ItemGroupDef[@Name='DM']/def:leaf/@xlink:href
+let $dmdataset := (
+	if($defineversion='2.1') then $definedoc//odm:ItemGroupDef[@Name='DM']/def21:leaf/@xlink:href
+	else $definedoc//odm:ItemGroupDef[@Name='DM']/def:leaf/@xlink:href
+)
 let $dmdatasetlocation := concat($base,$dmdataset)
 (: get the OID of the RFSTDTC variable :)
 let $rfstdtcoid := (
@@ -40,11 +45,14 @@ let $dmusubjidoid := (
         return $a  
 )
 (: iterate over all other datasets :)
-for $datasetdef in doc(concat($base,$define))//odm:ItemGroupDef[not(@Name='DM') and @Name=$domain]
+for $datasetdef in $definedoc//odm:ItemGroupDef[not(@Name='DM') and @Name=$datasetname]
     let $name := $datasetdef/@Name
     let $domain := $datasetdef/@Domain
-    let $datasetname := $datasetdef/def:leaf/@xlink:href
-    let $datasetlocation := concat($base,$datasetname)
+	let $name := (
+		if($defineversion='2.1') then $datasetdef/def21:leaf/@xlink:href
+		else $datasetdef/def:leaf/@xlink:href
+	)
+    let $datasetlocation := concat($base,$name)
     let $datasetdoc := doc($datasetlocation)
     (: Get the OIDs of the ENDY and ENDTC variables  :)
     let $endyoid := (
@@ -58,15 +66,15 @@ for $datasetdef in doc(concat($base,$define))//odm:ItemGroupDef[not(@Name='DM') 
         else concat(substring($name,1,2),'ENDY')  
     )
     let $endtcoid := (
-        for $a in doc(concat($base,$define))//odm:ItemDef[ends-with(@Name,'ENDTC') and string-length(@Name)=7]/@OID 
-        where $a = doc(concat($base,$define))//odm:ItemGroupDef[@Name=$name]/odm:ItemRef/@ItemOID
+        for $a in $definedoc//odm:ItemDef[ends-with(@Name,'ENDTC') and string-length(@Name)=7]/@OID 
+        where $a = $definedoc//odm:ItemGroupDef[@Name=$name]/odm:ItemRef/@ItemOID
         return $a
     ) 
-    let $endtcname := doc(concat($base,$define))//odm:ItemDef[@OID=$endtcoid]/@Name 
+    let $endtcname := $definedoc//odm:ItemDef[@OID=$endtcoid]/@Name 
     (: and the OID of the USUBJID variable (might be different from the one in DM) :)
     let $usubjidoid := (
-        for $a in doc(concat($base,$define))//odm:ItemDef[@Name='USUBJID']/@OID 
-        where $a = doc(concat($base,$define))//odm:ItemGroupDef[@Name=$name]/odm:ItemRef/@ItemOID
+        for $a in $definedoc//odm:ItemDef[@Name='USUBJID']/@OID 
+        where $a = $definedoc//odm:ItemGroupDef[@Name=$name]/odm:ItemRef/@ItemOID
         return $a
     )
     (: iterate over all the records that have an ENDTC data point  :)
@@ -108,6 +116,6 @@ for $datasetdef in doc(concat($base,$define))//odm:ItemGroupDef[not(@Name='DM') 
         )
         (: before comparing, check that the submitted ENDY value is really an integer :)
         where $endyvalue castable as xs:integer and $endycalculatedfda and $endyvalue and not($endycalculatedfda = $endyvalue)
-        return <error rule="CG0222" dataset="{data($name)}" variable="{data($endyname)}" rulelastupdate="2020-06-15" recordnumber="{data($recnum)}">Invalid value for {data($endyname)}, calculated value={data($endycalculatedfda)}, observed value={data($endyvalue)}, in dataset {data($datasetname)} </error>				
+        return <error rule="CG0222" dataset="{data($name)}" variable="{data($endyname)}" rulelastupdate="2020-08-04" recordnumber="{data($recnum)}">Invalid value for {data($endyname)}, calculated value={data($endycalculatedfda)}, observed value={data($endyvalue)}, in dataset {data($datasetname)} </error>				
 		
 	

@@ -15,6 +15,7 @@ See the License for the specific language governing permissions and limitations 
 (: TODO: add codes from SDTM-IG v.3.3 :)
 xquery version "3.0";
 declare namespace def = "http://www.cdisc.org/ns/def/v2.0";
+declare namespace def21 = "http://www.cdisc.org/ns/def/v2.1";
 declare namespace odm="http://www.cdisc.org/ns/odm/v1.3";
 declare namespace data="http://www.cdisc.org/ns/Dataset-XML/v1.0";
 declare namespace xlink="http://www.w3.org/1999/xlink";
@@ -29,6 +30,7 @@ declare function functx:is-value-in-sequence
 (: "declare variable ... external" allows to pass $base and $define from an external programm :)
 declare variable $base external;
 declare variable $define external;
+declare variable $defineversion external;
 (: let $base := '/db/fda_submissions/cdisc01/' :)
 (: let $define := 'define2-0-0-example-sdtm.xml' :)
 let $definedoc := doc(concat($base,$define))
@@ -38,7 +40,7 @@ let $tsparmcds := ("ADDON","AGEMAX","AGEMIN","LENGTH","PLANSUB","RANDOM","SEXPOP
 "REGID","OUTMSPRI","OUTMSSEC","OUTMSEXP","PCLAS","FCNTRY","ADAPT","DCUTDTC","DCUTDESC","INTMODEL","NARMS","STYPE",
 "INTTYPE","SSTDTC","SENDTC","ACTSUB","HLTSUBJI","SDMDUR","CRMDUR" )
 (: iterate over all TS datasets (there should be only one) :)
-for $itemgroup in doc(concat($base,$define))//odm:ItemGroupDef[@Name='TS']
+for $itemgroup in $definedoc//odm:ItemGroupDef[@Name='TS']
     (: Get the OID for the TSVAL, TSVALNF and TSPARMCD variables :)
     let $tsvaloid := (
         for $a in $definedoc//odm:ItemDef[@Name='TSVAL']/@OID
@@ -56,7 +58,10 @@ for $itemgroup in doc(concat($base,$define))//odm:ItemGroupDef[@Name='TS']
         return $a
     )
     (: get the dataset :)
-    let $datasetname := $itemgroup//def:leaf/@xlink:href
+	let $datasetname := (
+		if($defineversion='2.1') then $itemgroup//def21:leaf/@xlink:href
+		else $itemgroup//def:leaf/@xlink:href
+	)
     let $dataset := concat($base,$datasetname)
     let $datasetdoc := doc($dataset)
     (: iterate over all the records in the dataset for which TSPARMCD is one of the list of Appendix C1 of the SDTM-IG :)
@@ -69,6 +74,6 @@ for $itemgroup in doc(concat($base,$define))//odm:ItemGroupDef[@Name='TS']
         let $tsval := $record/odm:ItemData[@ItemOID=$tsvaloid]/@Value
         (: when TSVALNF is null then TSVAL != null :)
         where not($tsvalnf) and not($tsval)  (: Error when TSVAL is null and TSVAL is null :)
-        return <error rule="CG0292" dataset="TS" variable="TSVAL" recordnumber="{data($recnum)}" rulelastupdate="2017-03-01">As TSPARMCD={data($tsparmcd)} comes out of the list from SDTM-IG 3.2 Appendix C1 and TSVALNF=null, TSVAL is not allowed to be null</error>						
+        return <error rule="CG0292" dataset="TS" variable="TSVAL" recordnumber="{data($recnum)}" rulelastupdate="2020-08-04">As TSPARMCD={data($tsparmcd)} comes out of the list from SDTM-IG 3.2 Appendix C1 and TSVALNF=null, TSVAL is not allowed to be null</error>						
 		
 	

@@ -14,6 +14,7 @@ See the License for the specific language governing permissions and limitations 
 (: Rule CG0372 - --TESTCD <= 8 chars and contains only letters, numbers, and underscores and can not start with a number :)
 xquery version "3.0";
 declare namespace def = "http://www.cdisc.org/ns/def/v2.0";
+declare namespace def21 = "http://www.cdisc.org/ns/def/v2.1";
 declare namespace odm="http://www.cdisc.org/ns/odm/v1.3";
 declare namespace data="http://www.cdisc.org/ns/Dataset-XML/v1.0";
 declare namespace xlink="http://www.w3.org/1999/xlink";
@@ -21,6 +22,7 @@ declare namespace functx = "http://www.functx.com";
 (: "declare variable ... external" allows to pass $base and $define from an external programm :)
 declare variable $base external;
 declare variable $define external;
+declare variable $defineversion external;
 declare variable $datasetname external;
 declare function functx:is-value-in-sequence
   ( $value as xs:anyAtomicType? ,
@@ -35,21 +37,24 @@ let $numbers := ("0","1","2","3","4","5","6","7","8","9")
 for $itemgroup in $definedoc//odm:ItemGroupDef[@Name=$datasetname]
 	let $itemgroupdefname := $itemgroup/@Name
     (: get the dataset name and location :)
-    let $dsname := $itemgroup/def:leaf/@xlink:href
+	let $dsname := (
+		if($defineversion='2.1') then $itemgroup/def21:leaf/@xlink:href
+		else $itemgroup/def:leaf/@xlink:href
+	)
     let $dataset := concat($base,$dsname)
     (: get the OID of the "--TEST" variable :)
     let $testoid := (
-        for $a in doc(concat($base,$define))//odm:ItemDef[ends-with(@Name,'TESTCD')]/@OID 
+        for $a in $definedoc//odm:ItemDef[ends-with(@Name,'TESTCD')]/@OID 
         where $a = $itemgroup/odm:ItemRef/@ItemOID 
         return $a 
     )
-    let $testname := doc(concat($base,$define))//odm:ItemDef[@OID=$testoid]/@Name
+    let $testname := $definedoc//odm:ItemDef[@OID=$testoid]/@Name
     for $record in doc($dataset)//odm:ItemGroupData[odm:ItemData[@ItemOID=$testoid]]
         let $recnum := $record/@data:ItemGroupDataSeq
         let $value := $record/odm:ItemData[@ItemOID=$testoid]/@Value
         let $firstchar := substring($value,1,1)
         (: TODO: pattern matching does not seem to work well, though the pattern seems to be correct!  :)
         where string-length($value) > 8 or functx:is-value-in-sequence($firstchar,$numbers) or not(matches($value,'[A-Z_][A-Z0-9_]*'))
-        return <error rule="CG0372" recordnumber="{data($recnum)}" dataset="{data($itemgroupdefname)}" variable="{$testname}" rulelastupdate="2020-06-18">{data($testname)}='{data($value)}' must be not more than 8 chars long and contains only letters, numbers, and underscores and can not start with a number</error>			
+        return <error rule="CG0372" recordnumber="{data($recnum)}" dataset="{data($itemgroupdefname)}" variable="{$testname}" rulelastupdate="2020-08-04">{data($testname)}='{data($value)}' must be not more than 8 chars long and contains only letters, numbers, and underscores and can not start with a number</error>			
 		
 	

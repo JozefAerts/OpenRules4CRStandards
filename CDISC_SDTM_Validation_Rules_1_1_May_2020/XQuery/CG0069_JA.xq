@@ -14,23 +14,31 @@ See the License for the specific language governing permissions and limitations 
 (: Rule CG0069: When DSDECOD = 'DEATH' then DSSTDTC = DM.DTHDTC :)
 xquery version "3.0";
 declare namespace def = "http://www.cdisc.org/ns/def/v2.0";
+declare namespace def21 = "http://www.cdisc.org/ns/def/v2.1";
 declare namespace odm="http://www.cdisc.org/ns/odm/v1.3";
 declare namespace data="http://www.cdisc.org/ns/Dataset-XML/v1.0";
 declare namespace xlink="http://www.w3.org/1999/xlink";
 (: "declare variable ... external" allows to pass $base and $define from an external programm :)
 declare variable $base external; 
 declare variable $define external; 
+declare variable $defineversion external;
 (: let $base := '/db/fda_submissions/cdisc01/' :)
 (: let $define := 'define2-0-0-example-sdtm.xml' :)
 let $definedoc := doc(concat($base,$define))
 (: Get the DS dataset :)
 let $dsitemgroupdef := $definedoc//odm:ItemGroupDef[@Name='DS']
 (: and the location of the DS dataset :)
-let $dsdatasetlocation := $dsitemgroupdef/def:leaf/@xlink:href
+let $dsdatasetlocation := (
+	if($defineversion='2.1') then $dsitemgroupdef/def21:leaf/@xlink:href
+	else $dsitemgroupdef/def:leaf/@xlink:href
+)
 let $dsdatasetdoc := doc(concat($base,$dsdatasetlocation))
 (: Get the DM dataset and its location :)
 let $dmitemgroupdef := $definedoc//odm:ItemGroupDef[@Name='DM']
-let $dmdatasetlocation := $dmitemgroupdef/def:leaf/@xlink:href
+let $dmdatasetlocation := (
+	if($defineversion='2.1') then $dmitemgroupdef/def21:leaf/@xlink:href
+	else $dmitemgroupdef/def:leaf/@xlink:href
+)
 let $dmdatasetdoc := doc(concat($base,$dmdatasetlocation))
 (: get the OID of USUBJID and of DSDECOD in DS :)
 let $dsdecodoid := (
@@ -73,6 +81,6 @@ for $record in $dsdatasetdoc//odm:ItemGroupData[odm:ItemData[@ItemOID=$dsdecodoi
     let $dthdtc :=  $dmrecord/odm:ItemData[@ItemOID=$dmdthdtcoid]/@Value
     (: DSSTDTC and DTHDTC must be equal :)
     where not($dsstdtc = $dthdtc)
-    return <error rule="CG0069" variable="DSSTDTC" dataset="DS" rulelastupdate="2020-06-11">A record (record number={data($recnum)}) for USUBJID='{data($usubjid)}' has been found for which DSDECOD='DEATH' but the value of DSSTDTC={data($dsstdtc)} does not correspond to DTHDTC={data($dthdtc)} in DM</error>			
+    return <error rule="CG0069" variable="DSSTDTC" dataset="DS" rulelastupdate="2020-08-04">A record (record number={data($recnum)}) for USUBJID='{data($usubjid)}' has been found for which DSDECOD='DEATH' but the value of DSSTDTC={data($dsstdtc)} does not correspond to DTHDTC={data($dthdtc)} in DM</error>			
 		
 	

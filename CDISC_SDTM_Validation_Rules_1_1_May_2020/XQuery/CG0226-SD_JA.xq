@@ -14,18 +14,23 @@ See the License for the specific language governing permissions and limitations 
 (: Rule CG0226 - When DM.RFSTDTC = null then --STRF = null :)
 xquery version "3.0";
 declare namespace def = "http://www.cdisc.org/ns/def/v2.0";
+declare namespace def21 = "http://www.cdisc.org/ns/def/v2.1";
 declare namespace odm="http://www.cdisc.org/ns/odm/v1.3";
 declare namespace data="http://www.cdisc.org/ns/Dataset-XML/v1.0";
 declare namespace xlink="http://www.w3.org/1999/xlink"; 
 (: "declare variable ... external" allows to pass $base and $define from an external programm :)
 declare variable $base external;
 declare variable $define external; 
+declare variable $defineversion external;
 declare variable $datasetname external;
 (: let $base := '/db/fda_submissions/cdiscpilot01/'  :)
 (: let $define := 'define_2_0.xml' :)
 let $definedoc := doc(concat($base,$define))
 (: Get the location of the DM dataset :)
-let $dmdataset := $definedoc//odm:ItemGroupDef[@Name='DM']/def:leaf/@xlink:href
+let $dmdataset := (
+	if($defineversion='2.1') then $definedoc//odm:ItemGroupDef[@Name='DM']/def21:leaf/@xlink:href
+	else $definedoc//odm:ItemGroupDef[@Name='DM']/def:leaf/@xlink:href
+)
 let $dmdatasetlocation := concat($base,$dmdataset)
 let $dmdatasetdoc := doc($dmdatasetlocation)
 (: get the OID of the RFSTDTC variable :)
@@ -41,10 +46,13 @@ let $dmusubjidoid := (
         return $a  
 )
 (: iterate over all other datasets :)
-for $datasetdef in doc(concat($base,$define))//odm:ItemGroupDef[not(@Name='DM')][@Name=$datasetname]
+for $datasetdef in $definedoc//odm:ItemGroupDef[not(@Name='DM')][@Name=$datasetname]
     let $name := $datasetdef/@Name
     (: get the dataset location :)
-    let $datasetlocation := $datasetdef/def:leaf/@xlink:href
+	let $datasetlocation := (
+		if($defineversion='2.1') then $datasetdef/def21:leaf/@xlink:href
+		else $datasetdef/def:leaf/@xlink:href
+	)
     let $datasetdoc := doc(concat($base,$datasetlocation))
     (: get the OID of the --STRF variable (if any) :)
     let $strfoid := (
@@ -72,6 +80,6 @@ for $datasetdef in doc(concat($base,$define))//odm:ItemGroupDef[not(@Name='DM')]
         let $rfstdtc := $dmrecord/odm:ItemData[@ItemOID=$rfstdtcoid]/@Value
         (: When DM.RFSTDTC = null then --STRF = null :)
         where not($rfstdtc) and $strf
-        return <error rule="CG0226" dataset="{data($name)}" variable="{data($name)}" rulelastupdate="2020-06-15" recordnumber="{data($recnum)}">{data($strfname)}={data($strf)} is found although RFSTDTC in DM is null</error>			
+        return <error rule="CG0226" dataset="{data($name)}" variable="{data($name)}" rulelastupdate="2020-08-04" recordnumber="{data($recnum)}">{data($strfname)}={data($strf)} is found although RFSTDTC in DM is null</error>			
 		
 	

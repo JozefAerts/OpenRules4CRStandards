@@ -14,6 +14,7 @@ See the License for the specific language governing permissions and limitations 
 (: Rule CG0446 - when TSPARMCD = 'COMPTRT' then TSVALCD is a valid unique ingredient identifier from FDA Substance Registration System (SRS)  :)
 xquery version "3.0";
 declare namespace def = "http://www.cdisc.org/ns/def/v2.0";
+declare namespace def21 = "http://www.cdisc.org/ns/def/v2.1";
 declare namespace odm="http://www.cdisc.org/ns/odm/v1.3";
 declare namespace data="http://www.cdisc.org/ns/Dataset-XML/v1.0";
 declare namespace xlink="http://www.w3.org/1999/xlink";
@@ -21,26 +22,33 @@ declare namespace xs="http://www.w3.org/2001/XMLSchema";
 (: "declare variable ... external" allows to pass $base and $define from an external programm :)
 declare variable $base external;
 declare variable $define external;
+declare variable $defineversion external;
 (: let $base := '/db/fda_submissions/cdisc01/'  :)
 (: let $define := 'define2-0-0-example-sdtm.xml' :)
-
+let $definedoc := doc(concat($base,$define))
 (: get the TS dataset :)
-let $tsdataset := doc(concat($base,$define))//odm:ItemGroupDef[@Name='TS']
-let $tsdatasetname := $tsdataset/def:leaf/@xlink:href
-let $tsdatasetlocation := concat($base,$tsdatasetname)
+let $tsdataset := $definedoc//odm:ItemGroupDef[@Name='TS']
+let $tsdatasetname := (
+	if($defineversion='2.1') then $tsdataset/def21:leaf/@xlink:href
+	else $tsdataset/def:leaf/@xlink:href
+)
+let $tsdatasetdoc := (
+	if($tsdatasetname) then doc(concat($base,$tsdatasetname))
+	else ()
+)
 (: get the OID of the TSPARMCD and TSVALCD variables :)
 let $tsparmcdoid := (
-    for $a in doc(concat($base,$define))//odm:ItemDef[@Name='TSPARMCD']/@OID 
-    where $a = doc(concat($base,$define))//odm:ItemGroupDef[@Name='TS']/odm:ItemRef/@ItemOID
+    for $a in $definedoc//odm:ItemDef[@Name='TSPARMCD']/@OID 
+    where $a = $definedoc//odm:ItemGroupDef[@Name='TS']/odm:ItemRef/@ItemOID
     return $a
 )
 let $tsvalcdoid := (
-    for $a in doc(concat($base,$define))//odm:ItemDef[@Name='TSVALCD']/@OID 
-    where $a = doc(concat($base,$define))//odm:ItemGroupDef[@Name='TS']/odm:ItemRef/@ItemOID
+    for $a in $definedoc//odm:ItemDef[@Name='TSVALCD']/@OID 
+    where $a = $definedoc//odm:ItemGroupDef[@Name='TS']/odm:ItemRef/@ItemOID
     return $a
 )
 (: get all the records that have TSPARMCD=COMPTRT :)
-for $record in doc($tsdatasetlocation)//odm:ItemGroupData[odm:ItemData[@ItemOID=$tsparmcdoid and @Value='COMPTRT']] 
+for $record in $tsdatasetdoc//odm:ItemGroupData[odm:ItemData[@ItemOID=$tsparmcdoid and @Value='COMPTRT']] 
     let $recnum := $record/@data:ItemGroupDataSeq
     (: get the value of the TSVAL variable :)
     let $tsvalcdvalues := replace($record/odm:ItemData[@ItemOID=$tsvalcdoid]/@Value,' ','%20')
@@ -55,6 +63,6 @@ for $record in doc($tsdatasetlocation)//odm:ItemGroupData[odm:ItemData[@ItemOID=
         let $uniicount := count($webserviceresult/uniis/unii)
         (: count the number of active moeities for this code - when 0, the code is invalid :)
         where $uniicount=0
-        return <error rule="CG0446" dataset="TS" variable="TSVALCD" rulelastupdate="2020-06-19" recordnumber="{data($recnum)}">Invalid TSVALCD value={data($tsvalcdvalue)} for TSPARMCD=COMPTRT in dataset TS</error>			
+        return <error rule="CG0446" dataset="TS" variable="TSVALCD" rulelastupdate="2020-08-04" recordnumber="{data($recnum)}">Invalid TSVALCD value={data($tsvalcdvalue)} for TSPARMCD=COMPTRT in dataset TS</error>			
 		
 	

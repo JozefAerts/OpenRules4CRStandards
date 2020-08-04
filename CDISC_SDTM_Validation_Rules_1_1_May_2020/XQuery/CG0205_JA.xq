@@ -17,11 +17,13 @@ When data have been split into multiple datasets (see Section 4: 4.1.1.7, Splitt
 :)
 xquery version "3.0";
 declare namespace def = "http://www.cdisc.org/ns/def/v2.0";
+declare namespace def21 = "http://www.cdisc.org/ns/def/v2.1";
 declare namespace odm="http://www.cdisc.org/ns/odm/v1.3";
 declare namespace data="http://www.cdisc.org/ns/Dataset-XML/v1.0";
 declare namespace xlink="http://www.w3.org/1999/xlink";
 declare variable $base external;
 declare variable $define external; 
+declare variable $defineversion external;
 (: let $base := '/db/fda_submissions/cdiscpilot01/'  :)
 (: let $define := 'define_2_0.xml' :)
 let $definedoc := doc(concat($base,$define))
@@ -30,6 +32,6 @@ for $suppitemgroupdef in $definedoc//odm:ItemGroupDef[starts-with(@Name,'SUPP') 
     let $name := $suppitemgroupdef/@Name
     (: the name may not be more than 8 characters :)
     where string-length($name) > 8
-    return <error rule="CG0205" dataset="{data($name)}" rulelastupdate="2020-06-15">Supplemental Qualifier dataset name {data($name)} has more than 8 characters</error>			
+    return <error rule="CG0205" dataset="{data($name)}" rulelastupdate="2020-08-04">Supplemental Qualifier dataset name {data($name)} has more than 8 characters</error>			
 		 
 	

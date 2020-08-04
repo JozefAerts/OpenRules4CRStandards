@@ -14,22 +14,30 @@ See the License for the specific language governing permissions and limitations 
 (: Rule CG0427 - When --RESCAT != null then --STRESC != null :)
 xquery version "3.0";
 declare namespace def = "http://www.cdisc.org/ns/def/v2.0";
+declare namespace def21 = "http://www.cdisc.org/ns/def/v2.1";
 declare namespace odm="http://www.cdisc.org/ns/odm/v1.3";
 declare namespace data="http://www.cdisc.org/ns/Dataset-XML/v1.0";
 declare namespace xlink="http://www.w3.org/1999/xlink";
 (: "declare variable ... external" allows to pass $base and $define from an external programm :)
 declare variable $base external;
 declare variable $define external; 
+declare variable $defineversion external;
 declare variable $datasetname external;
 (: let $base := '/db/fda_submissions/cdiscpilot01/' :)
 (: let $define := 'define_2_0.xml' :)
 let $definedoc := doc(concat($base,$define))
 (: iterate over all FINDINGS datasets :)
-for $itemgroupdef in $definedoc//odm:ItemGroupDef[@Name=$datasetname][upper-case(@def:Class)='FINDINGS']
+for $itemgroupdef in $definedoc//odm:ItemGroupDef[@Name=$datasetname][upper-case(@def:Class)='FINDINGS' or upper-case(./def21:Class/@Name)='FINDINGS']
     let $name := $itemgroupdef/@Name
     (: get the dataset location and document :)
-    let $datasetlocation := $itemgroupdef/def:leaf/@xlink:href
-    let $datasetdoc := doc(concat($base,$datasetlocation))
+	let $datasetlocation := (
+		if($defineversion='2.1') then $itemgroupdef/def21:leaf/@xlink:href
+		else $itemgroupdef/def:leaf/@xlink:href
+	)
+    let $datasetdoc := (
+		if($datasetlocation) then doc(concat($base,$datasetlocation))
+		else ()
+	)
     (: get the OIDs of the --STRESC and --RESCAT variable :)
     let $strescoid := (
         for $a in $definedoc//odm:ItemDef[ends-with(@Name,'STRESC')]/@OID 
@@ -42,7 +50,7 @@ for $itemgroupdef in $definedoc//odm:ItemGroupDef[@Name=$datasetname][upper-case
         where $a = $itemgroupdef/odm:ItemRef/@ItemOID
         return $a
     )
-    let $rescatname := doc(concat($base,$define))//odm:ItemDef[@OID=$rescatoid]/@Name
+    let $rescatname := $definedoc//odm:ItemDef[@OID=$rescatoid]/@Name
     (: iterate over all records for which --RESCAT is populated (not null), 
     but only when --RESCAT and --STRESC have been defined :)
     for $record in $datasetdoc[$rescatoid and $strescoid]//odm:ItemGroupData[odm:ItemData[@ItemOID=$rescatoid]]
@@ -52,6 +60,6 @@ for $itemgroupdef in $definedoc//odm:ItemGroupDef[@Name=$datasetname][upper-case
         let $stresc := $record/odm:ItemData[@ItemOID=$strescoid]/@Value
         (: --STRESC must be populated :)
         where not($stresc)
-        return <error rule="CG0427" dataset="{data($name)}" variable="{data($strescname)}" rulelastupdate="2020-06-19" recordnumber="{data($recnum)}">{data($rescatname)}='{data($rescat)}' is not NULL, but {data($strescname)}=NULL</error>						
+        return <error rule="CG0427" dataset="{data($name)}" variable="{data($strescname)}" rulelastupdate="2020-08-04" recordnumber="{data($recnum)}">{data($rescatname)}='{data($rescat)}' is not NULL, but {data($strescname)}=NULL</error>						
 		
 	

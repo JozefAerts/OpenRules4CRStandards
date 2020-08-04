@@ -13,22 +13,30 @@ See the License for the specific language governing permissions and limitations 
 
 xquery version "3.0";
 declare namespace def = "http://www.cdisc.org/ns/def/v2.0";
+declare namespace def21 = "http://www.cdisc.org/ns/def/v2.1";
 declare namespace odm="http://www.cdisc.org/ns/odm/v1.3";
 declare namespace data="http://www.cdisc.org/ns/Dataset-XML/v1.0";
 declare namespace xlink="http://www.w3.org/1999/xlink";
 (: "declare variable ... external" allows to pass $base and $define from an external programm :)
 declare variable $base external;
 declare variable $define external; 
+declare variable $defineversion external;
 declare variable $datasetname external;
 (: let $base := '/db/fda_submissions/cdiscpilot01/' :)
 (: let $define := 'define_2_0.xml' :)
 (: let $datasetname := 'VS' :)
 let $definedoc := doc(concat($base,$define))
 (: iterate over all FINDINGS datasets :)
-for $itemgroupdef in $definedoc//odm:ItemGroupDef[upper-case(@def:Class)='FINDINGS'][@Domain=$datasetname or starts-with(@Name,$datasetname)]
+for $itemgroupdef in $definedoc//odm:ItemGroupDef[upper-case(@def:Class)='FINDINGS' or upper-case(./def21:Class/@Name)='FINDINGS'][@Domain=$datasetname or starts-with(@Name,$datasetname)]
     let $name := $itemgroupdef/@Name
-    let $datasetlocation := $itemgroupdef/def:leaf/@xlink:href
-    let $datasetdoc := doc(concat($base,$datasetlocation))
+	let $datasetlocation := (
+		if($defineversion='2.1') then $itemgroupdef/def21:leaf/@xlink:href
+		else $itemgroupdef/def:leaf/@xlink:href
+	)
+    let $datasetdoc := (
+		if($datasetlocation) then doc(concat($base,$datasetlocation))
+		else ()
+	)
     (: get the OIDs of the --STAT and --ORRES variable :)
     let $statoid := (
         for $a in $definedoc//odm:ItemDef[ends-with(@Name,'STAT')]/@OID 
@@ -41,7 +49,7 @@ for $itemgroupdef in $definedoc//odm:ItemGroupDef[upper-case(@def:Class)='FINDIN
         where $a = $itemgroupdef/odm:ItemRef/@ItemOID
         return $a
     )
-    let $orresname := doc(concat($base,$define))//odm:ItemDef[@OID=$orresoid]/@Name
+    let $orresname := $definedoc//odm:ItemDef[@OID=$orresoid]/@Name
     (: iterate over all records for which ORRES is populated - but only when --STAT was at least defined :)
     for $record in $datasetdoc[$orresoid and $statoid]//odm:ItemGroupData[odm:ItemData[@ItemOID=$orresoid]/@Value]
         let $recnum := $record/@data:ItemGroupDataSeq
@@ -50,6 +58,6 @@ for $itemgroupdef in $definedoc//odm:ItemGroupDef[upper-case(@def:Class)='FINDIN
         let $orresvalue := $record/odm:ItemData[@ItemOID=$orresoid]/@Value
         (: STAT must be null :)
         where $statvalue
-        return <error rule="CG0422" dataset="{data($name)}" variable="{data($statname)}" rulelastupdate="2020-06-19" recordnumber="{data($recnum)}">{data($statname)} must be NULL, as ({data($orresname)})='{data($orresvalue)}' is not null. {data($statname)}='{data($statvalue)}' is found</error>
+        return <error rule="CG0422" dataset="{data($name)}" variable="{data($statname)}" rulelastupdate="2020-08-04" recordnumber="{data($recnum)}">{data($statname)} must be NULL, as ({data($orresname)})='{data($orresvalue)}' is not null. {data($statname)}='{data($statvalue)}' is found</error>
 			
 	

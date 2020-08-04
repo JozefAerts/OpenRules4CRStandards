@@ -14,12 +14,14 @@ See the License for the specific language governing permissions and limitations 
 (: Rule CG0061 When --STRTPT != null then --STTPT != null :)
 xquery version "3.0";
 declare namespace def = "http://www.cdisc.org/ns/def/v2.0";
+declare namespace def21 = "http://www.cdisc.org/ns/def/v2.1";
 declare namespace odm="http://www.cdisc.org/ns/odm/v1.3";
 declare namespace data="http://www.cdisc.org/ns/Dataset-XML/v1.0";
 declare namespace xlink="http://www.w3.org/1999/xlink";
 (: "declare variable ... external" allows to pass $base and $define from an external programm :)
 declare variable $base external; 
 declare variable $define external; 
+declare variable $defineversion external;
 declare variable $datasetname external;
 (: let $base := '/db/fda_submissions/cdisc01/' :)
 (: let $define := 'define2-0-0-example-sdtm.xml' :)
@@ -47,7 +49,10 @@ for $itemgroupdef in $definedoc//odm:ItemGroupDef[@Name=$datasetname]
     )
     let $strtptname := $definedoc//odm:ItemDef[@OID=$strtptoid]/@Name
     (: get the location of the dataset :)
-    let $dataset := $itemgroupdef/def:leaf/@xlink:href
+	let $dataset := (
+		if($defineversion='2.1') then $itemgroupdef/def21:leaf/@xlink:href
+		else $itemgroupdef/def:leaf/@xlink:href
+	)
     let $datasetdoc := doc($dataset)
     (: iterate over all the records that do have an --STRTPT record, but only for those datasets for which --STTPT and --STRTPT have been defined :)
     for $record in $datasetdoc[$sttptoid and $strtptoid]//odm:ItemGroupData[odm:ItemData[@ItemOID=$strtptoid]] 
@@ -59,6 +64,6 @@ for $itemgroupdef in $definedoc//odm:ItemGroupDef[@Name=$datasetname]
         let $sttptvalue := $record/odm:ItemData[@ItemOID=$sttptoid]/@Value
         (: give an error when there is a --STRTPT value but no --STTPT value :)
         where $strtptvalue and not($sttptvalue)
-    return <error rule="CG0061" variable="{data($sttptname)}" dataset="{$name}" rulelastupdate="2020-06-11" recordnumber="{data($recnum)}">No value for {data($sttptname)} was found although there is a value for {data($strtptname)}={data($strtptvalue)}</error>			
+    return <error rule="CG0061" variable="{data($sttptname)}" dataset="{$name}" rulelastupdate="2020-08-04" recordnumber="{data($recnum)}">No value for {data($sttptname)} was found although there is a value for {data($strtptname)}={data($strtptvalue)}</error>			
 		
 	

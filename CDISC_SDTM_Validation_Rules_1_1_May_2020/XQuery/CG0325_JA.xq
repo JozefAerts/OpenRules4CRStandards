@@ -14,17 +14,22 @@ See the License for the specific language governing permissions and limitations 
 (: Rule CG0325 - The combination of TESTRL and TEENRL is unique for each ETCD  :)
 xquery version "3.0";
 declare namespace def = "http://www.cdisc.org/ns/def/v2.0";
+declare namespace def21 = "http://www.cdisc.org/ns/def/v2.1";
 declare namespace odm="http://www.cdisc.org/ns/odm/v1.3";
 declare namespace data="http://www.cdisc.org/ns/Dataset-XML/v1.0";
 declare namespace xlink="http://www.w3.org/1999/xlink";
 declare variable $base external;
 declare variable $define external; 
+declare variable $defineversion external;
 (: let $base := '/db/fda_submissions/cdiscpilot01/' :)
 (: let $define := 'define_2_0.xml' :)
 let $definedoc := doc(concat($base,$define)) 
 (: get the TE dataset definition and location :)
 let $teitemgroupdef := $definedoc//odm:ItemGroupDef[@Name='TE']
-let $tedatasetlocation := $teitemgroupdef/def:leaf/@xlink:href
+let $tedatasetlocation := (
+	if($defineversion='2.1') then $teitemgroupdef/def21:leaf/@xlink:href
+	else $teitemgroupdef/def:leaf/@xlink:href
+)
 let $tedatasetdoc := doc(concat($base,$tedatasetlocation))
 (: we need the OIDs of TESTRL, TEENRL and ETCD :)
 let $testrloid := (
@@ -57,6 +62,6 @@ for $record in $tedatasetdoc//odm:ItemGroupData
         let $recnum2 := $record2/@data:ItemGroupDataSeq
         let $etcd2 := $record2/odm:ItemData[@ItemOID=$etcdoid]/@Value
         (: as both records have the same value for TESTRL and TEENRL, give an error :)
-        return <error rule="CG0325" dataset="TE" recordnumber="{data($recnum2)}" rulelastupdate="2020-06-16">Record {data($recnum2)} with ETCD='{data($etcd2)}' has the same combination of values of  TESTRL='{data($testrl)}' and TEENRL='{data($teenrl)}' as record {data($recnum)} with ETCD='{data($etcd)}'</error>											
+        return <error rule="CG0325" dataset="TE" recordnumber="{data($recnum2)}" rulelastupdate="2020-08-04">Record {data($recnum2)} with ETCD='{data($etcd2)}' has the same combination of values of  TESTRL='{data($testrl)}' and TEENRL='{data($teenrl)}' as record {data($recnum)} with ETCD='{data($etcd)}'</error>											
 		
 	

@@ -14,26 +14,40 @@ See the License for the specific language governing permissions and limitations 
 (: Rule CG0191: When MS dataset present in study then MB dataset present in study  :)
 xquery version "3.0";
 declare namespace def = "http://www.cdisc.org/ns/def/v2.0";
+declare namespace def21 = "http://www.cdisc.org/ns/def/v2.1";
 declare namespace odm="http://www.cdisc.org/ns/odm/v1.3";
 declare namespace data="http://www.cdisc.org/ns/Dataset-XML/v1.0";
 declare namespace xlink="http://www.w3.org/1999/xlink";
 declare variable $base external; 
 declare variable $define external;  
+declare variable $defineversion external;
 (: let $base := 'LZZT_SDTM_Dataset-XML/' :)
 (: let $define := 'define_2_0.xml' :)
 let $definedoc := doc(concat($base,$define))
 (: get the MS dataset definition :)
 let $msitemgroupdef := $definedoc//odm:ItemGroupDef[@Name='MS']
 (: and the location of the dataset and the document itself :)
-let $msdatasetlocation := $msitemgroupdef/def:leaf/@xlink:href
-let $msdatasetdoc := doc(concat($base,$msdatasetlocation))
+let $msdatasetlocation := (
+	if($defineversion='2.1') then $msitemgroupdef/def21:leaf/@xlink:href
+	else $msitemgroupdef/def:leaf/@xlink:href
+)
+let $msdatasetdoc := (
+	if($msdatasetlocation) then doc(concat($base,$msdatasetlocation))
+	else ()
+)
 (: get the MB dataset (if any) :)
 let $mbitemgroupdef := $definedoc//odm:ItemGroupDef[@Name='MB']
 (: and the location of the dataset and the document itself :)
-let $mbdatasetlocation := $mbitemgroupdef/def:leaf/@xlink:href
-let $mbdatasetdoc := doc(concat($base,$mbdatasetlocation))
+let $mbdatasetlocation := (
+	if($defineversion='2.1') then $mbitemgroupdef/def21:leaf/@xlink:href
+	else $mbitemgroupdef/def:leaf/@xlink:href
+)
+let $mbdatasetdoc := (
+	if($mbdatasetlocation) then doc(concat($base,$mbdatasetlocation))
+	else ()
+)
 (: when the MS dataset exists, also the MB document must exist :)
 where $msdatasetlocation and doc-available($msdatasetdoc) and (not($mbdatasetlocation) or not($mbdatasetdoc)) 
-return <error rule="CG0191" dataset="MS" rulelastupdate="2020-06-15">MB dataset exists, but MS dataset is missing</error>				
+return <error rule="CG0191" dataset="MS" rulelastupdate="2020-08-04">MB dataset exists, but MS dataset is missing</error>				
 		
 	

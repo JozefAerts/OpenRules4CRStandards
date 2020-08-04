@@ -16,11 +16,13 @@ See the License for the specific language governing permissions and limitations 
 This will require the use of a RESTful web service :)
 xquery version "3.0";
 declare namespace def = "http://www.cdisc.org/ns/def/v2.0";
+declare namespace def21 = "http://www.cdisc.org/ns/def/v2.1";
 declare namespace odm="http://www.cdisc.org/ns/odm/v1.3";
 declare namespace data="http://www.cdisc.org/ns/Dataset-XML/v1.0";
 declare namespace xlink="http://www.w3.org/1999/xlink";
 declare variable $base external;
 declare variable $define external; 
+declare variable $defineversion external;
 (: let $base := 'LZZT_SDTM_Dataset-XML/' :)
 (: let $define := 'define_2_0.xml' :)
 let $definedoc := doc(concat($base,$define))
@@ -28,7 +30,10 @@ let $definedoc := doc(concat($base,$define))
 for $itemgroupdef in $definedoc//odm:ItemGroupDef[starts-with(@Name,'AP') and not(@Name='APRELSUB')]
     let $name := $itemgroupdef/@Name
     (: get the dataset location :)
-    let $datasetlocation := $itemgroupdef/def:leaf/@xlink:href
+	let $datasetlocation := (
+		if($defineversion='2.1') then $itemgroupdef/def21:leaf/@xlink:href
+		else $itemgroupdef/def:leaf/@xlink:href
+	)
     let $datasetdoc := doc(concat($base,$datasetlocation))
     (: we need the OID of DOMAIN :)
     let $domainoid := (
@@ -45,9 +50,9 @@ for $itemgroupdef in $definedoc//odm:ItemGroupDef[starts-with(@Name,'AP') and no
     (: ESSENTIALLY, this should not be 1 rule, but should be 3 different rules!  :)
     let $message := (
     	if(string-length($domainvalue) != 4) then 
-          	<error rule="CG0155" dataset="{data($name)}" rulelastupdate="2020-06-14">Length of DOMAIN value '{data($domainvalue)}' is not 4</error> 
+          	<error rule="CG0155" dataset="{data($name)}" rulelastupdate="2020-08-04">Length of DOMAIN value '{data($domainvalue)}' is not 4</error> 
           else if(not(starts-with($domainvalue,'AP'))) then 
-            <error rule="CG0155" dataset="{data($name)}" rulelastupdate="2020-06-14">DOMAIN value '{data($domainvalue)}' does not start with 'AP'</error> 
+            <error rule="CG0155" dataset="{data($name)}" rulelastupdate="2020-08-04">DOMAIN value '{data($domainvalue)}' does not start with 'AP'</error> 
           else ()
 	)
     return $message	

@@ -14,17 +14,22 @@ See the License for the specific language governing permissions and limitations 
 (: Rule CG0238 - When TEDUR = null then TEENRL != null :)
 xquery version "3.0";
 declare namespace def = "http://www.cdisc.org/ns/def/v2.0";
+declare namespace def21 = "http://www.cdisc.org/ns/def/v2.1";
 declare namespace odm="http://www.cdisc.org/ns/odm/v1.3";
 declare namespace data="http://www.cdisc.org/ns/Dataset-XML/v1.0";
 declare namespace xlink="http://www.w3.org/1999/xlink";
 declare variable $base external;
 declare variable $define external; 
+declare variable $defineversion external;
 (: let $base := '/db/fda_submissions/cdiscpilot01/' :)
 (: let $define := 'define_2_0.xml' :)
 let $definedoc := doc(concat($base,$define)) 
 (: get the TE dataset definition and location :)
 let $teitemgroupdef := $definedoc//odm:ItemGroupDef[@Name='TE']
-let $tedatasetlocation := $teitemgroupdef/def:leaf/@xlink:href
+let $tedatasetlocation := (
+	if($defineversion='2.1') then $teitemgroupdef/def21:leaf/@xlink:href
+	else $teitemgroupdef/def:leaf/@xlink:href
+)
 let $tedatasetdoc := doc(concat($base,$tedatasetlocation))
 (: we need the OIDs of TEDUR and TEENRL :)
 let $teduroid := (
@@ -44,6 +49,6 @@ for $record in $tedatasetdoc//odm:ItemGroupData[not(odm:ItemData/@ItemOID=$tedur
     let $teenrl := $record/odm:ItemData[@ItemOID=$teenrloid]/@Value
     (: TEENRL may not be null :)
     where not($teenrl)
-    return <error rule="CG0328" dataset="TE" recordnumber="{data($recnum)}" rulelastupdate="2020-06-16">TEENRL is null although TEDUR is null</error>			
+    return <error rule="CG0328" dataset="TE" recordnumber="{data($recnum)}" rulelastupdate="2020-08-04">TEENRL is null although TEDUR is null</error>			
 		
 	

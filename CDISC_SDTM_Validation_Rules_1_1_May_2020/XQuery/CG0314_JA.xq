@@ -14,12 +14,14 @@ See the License for the specific language governing permissions and limitations 
 (: Rule CG0314 - When SUPP--.QNAM present in dataset then Value of SUPP--.QNAM != any variable name defined in the corresponding SDTM version :)
 xquery version "3.0";
 declare namespace def = "http://www.cdisc.org/ns/def/v2.0";
+declare namespace def21 = "http://www.cdisc.org/ns/def/v2.1";
 declare namespace odm="http://www.cdisc.org/ns/odm/v1.3";
 declare namespace data="http://www.cdisc.org/ns/Dataset-XML/v1.0";
 declare namespace xlink="http://www.w3.org/1999/xlink";
 (: "declare variable ... external" allows to pass $base and $define from an external programm :)
 declare variable $base external;
 declare variable $define external; 
+declare variable $defineversion external;
 (: let $base := 'LZZT_SDTM_Dataset-XML/' :)
 (: let $define := 'define_2_0.xml' :)
 let $definedoc := doc(concat($base,$define)) 
@@ -27,9 +29,12 @@ let $definedoc := doc(concat($base,$define))
 SDTM-IG 3.1.2 => SDTM 1.2
 SDTM-IG 3.1.3 => SDTM 1.3
 SDTM-IG 3.2 => SDTM 1.4 (default)
-SDTM-IG 3.3 => SDTM 1.7
- :)
-let $sdtmigversion := $definedoc//odm:MetaDataVersion[@def:StandardName='SDTM-IG']/@def:StandardVersion 
+SDTM-IG 3.3 => SDTM 1.7 :)
+(: TODO: for define.xml 2.1, pick up the version at the ItemGroupDef level :)
+let $sdtmigversion := (
+	if($defineversion='2.1') then $definedoc//odm:MetaDataVersion/def21:Standards/def21:Standard[@Type='IG' and @Name='SDTMIG']/@Version
+	else $definedoc//odm:MetaDataVersion[@def:StandardName='SDTM-IG']/@def:StandardVersion 
+)
 let $sdtmmodelversion := (
 	if($sdtmigversion='3.1.2') then '1.2'
 	else if($sdtmigversion = '3.1.3') then '1.3'
@@ -54,8 +59,14 @@ for $itemgroupdef in $definedoc//odm:ItemGroupDef[starts-with(@Name,'SUPP')]
         return $a
     )
     (: get the dataset location :)
-    let $datasetlocation := $itemgroupdef/def:leaf/@xlink:href
-    let $datasetdoc := doc(concat($base,$datasetlocation))
+	let $datasetlocation := (
+		if($defineversion='2.1') then $itemgroupdef/def21:leaf/@xlink:href
+		else $itemgroupdef/def:leaf/@xlink:href
+	)
+    let $datasetdoc := (
+		if($datasetlocation) then doc(concat($base,$datasetlocation))
+		else ()
+	)
     (: iterate over all the records in the datasset
     ALTERNATIVE: get all unique values of QNAM in the dataset :)
     for $record in $datasetdoc//odm:ItemGroupData
@@ -71,6 +82,6 @@ for $itemgroupdef in $definedoc//odm:ItemGroupDef[starts-with(@Name,'SUPP')]
         let $varlabelsdtm := doc($webservicerequest)/XML4PharmaServerWebServiceResponse/Response/Variable/Variable_Label
         (: is there IS a variable label for this variable, then the value of QNAM is already defined in SDTM, and the rule is violated :)
         where $varlabelsdtm
-        return <error rule="CG0314" sdtmigversion="{data($sdtmigversion)}" dataset="{data($name)}" recordnumber="{data($recnum)}" rulelastupdate="2020-06-15">The value of QNAM='{data($qnam)}' is not allowed as it is already defined in SDTM</error>								
+        return <error rule="CG0314" sdtmigversion="{data($sdtmigversion)}" dataset="{data($name)}" recordnumber="{data($recnum)}" rulelastupdate="2020-08-04">The value of QNAM='{data($qnam)}' is not allowed as it is already defined in SDTM</error>								
 	
 	

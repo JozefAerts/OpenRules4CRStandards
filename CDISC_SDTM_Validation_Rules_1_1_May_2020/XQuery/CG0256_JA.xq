@@ -14,18 +14,23 @@ See the License for the specific language governing permissions and limitations 
 (: Rule CG0256 - When TIVERS not present in dataset then IETESTCD unique in dataset :)
 xquery version "3.0";
 declare namespace def = "http://www.cdisc.org/ns/def/v2.0";
+declare namespace def21 = "http://www.cdisc.org/ns/def/v2.1";
 declare namespace odm="http://www.cdisc.org/ns/odm/v1.3";
 declare namespace data="http://www.cdisc.org/ns/Dataset-XML/v1.0";
 declare namespace xlink="http://www.w3.org/1999/xlink";
 (: "declare variable ... external" allows to pass $base and $define from an external programm :)
 declare variable $base external;
 declare variable $define external;
+declare variable $defineversion external;
 (: let $base := '/db/fda_submissions/cdisc01/' :)
 (: let $define := 'define2-0-0-example-sdtm.xml' :)
 let $definedoc := doc(concat($base,$define)) 
 (: Get the TI dataset :)
 let $tidatasetdef := $definedoc//odm:ItemGroupDef[@Name='TI']
-let $tidatasetname := $tidatasetdef/def:leaf/@xlink:href
+let $tidatasetname := (
+	if($defineversion='2.1') then $tidatasetdef/def21:leaf/@xlink:href
+	else $tidatasetdef/def:leaf/@xlink:href
+)
 let $tidatasetdoc := doc(concat($base,$tidatasetname))
 (: get the OID of IETESTCD and TIVERS variables (when present) :)
 let $ietestcdoid := (
@@ -50,6 +55,6 @@ for $record in $tidatasetdoc[$ietestcdoid and not($tiversoid)]//odm:ItemGroupDat
         let $ietestcdnext := $recordnext/odm:ItemData[@ItemOID=$ietestcdoid]/@Value
         (: give an error when the 2 values of IETEST are identical :)
         where $ietestcd=$ietestcdnext
-        return <error rule="CG0256" dataset="TI" variable="IETESTCD" rulelastupdate="2020-06-15" recordnumber="{data($recnum)}">Records {data($recnum)} and {data($recnumnext)} have the same value for IETESTCD='{data($ietestcd)}' where TIVERS is absent</error>			
+        return <error rule="CG0256" dataset="TI" variable="IETESTCD" rulelastupdate="2020-08-04" recordnumber="{data($recnum)}">Records {data($recnum)} and {data($recnumnext)} have the same value for IETESTCD='{data($ietestcd)}' where TIVERS is absent</error>			
 		
 	

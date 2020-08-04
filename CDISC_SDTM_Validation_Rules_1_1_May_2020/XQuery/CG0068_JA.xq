@@ -14,23 +14,31 @@ See the License for the specific language governing permissions and limitations 
 (: Rule CG0068: When Multiple informed consents obtained and DSDECOD = 'INFORMED CONSENT OBTAINED' then earliest DSSTDTC  = DM.RFICDTC :)
 xquery version "3.0";
 declare namespace def = "http://www.cdisc.org/ns/def/v2.0";
+declare namespace def21 = "http://www.cdisc.org/ns/def/v2.1";
 declare namespace odm="http://www.cdisc.org/ns/odm/v1.3";
 declare namespace data="http://www.cdisc.org/ns/Dataset-XML/v1.0";
 declare namespace xlink="http://www.w3.org/1999/xlink";
 (: "declare variable ... external" allows to pass $base and $define from an external programm :)
 declare variable $base external; 
 declare variable $define external; 
+declare variable $defineversion external;
 (: let $base := '/db/fda_submissions/cdisc01/' :)
 (: let $define := 'define2-0-0-example-sdtm.xml' :)
 let $definedoc := doc(concat($base,$define))
 (: Get the DS dataset :)
 let $dsitemgroupdef := $definedoc//odm:ItemGroupDef[@Name='DS']
 (: and the location of the DS dataset :)
-let $dsdatasetlocation := $dsitemgroupdef/def:leaf/@xlink:href
+let $dsdatasetlocation := (
+	if($defineversion='2.1') then $dsitemgroupdef/def21:leaf/@xlink:href
+	else $dsitemgroupdef/def:leaf/@xlink:href
+)
 let $dsdatasetdoc := doc(concat($base,$dsdatasetlocation))
 (: Get the DM dataset and its location :)
 let $dmitemgroupdef := $definedoc//odm:ItemGroupDef[@Name='DM']
-let $dmdatasetlocation := $dmitemgroupdef/def:leaf/@xlink:href
+let $dmdatasetlocation := (
+	if($defineversion='2.1') then $dmitemgroupdef/def21:leaf/@xlink:href
+	else $dmitemgroupdef/def:leaf/@xlink:href
+)
 let $dmdatasetdoc := doc(concat($base,$dmdatasetlocation))
 (: get the OID of USUBJID and of DSDECOD in DS :)
 let $dsdecodoid := (
@@ -85,6 +93,6 @@ for $group in $orderedrecords
     let $dminformedconsentdatenumber := number(replace($dminformedconsentdate,'-',''))
     (: both have to equal - but beware of absent informed content dates in DM :)
     where $dminformedconsentdate and not($dminformedconsentdatenumber = $earliestinformedconsentdateasnumber)
-    return <error rule="CG0068" variable="DSDECOD" dataset="DS" rulelastupdate="2020-06-11">For subject USUBJID='{data($usubjidvalue)}', the earliest informed consent date in DS (DSDECOD='INFORMED CONSENT OBTAINED') does not correspond to the informed consent date RFICDTC={data($dminformedconsentdate)} in DM. The earliest informed consent date found in DS is '{data($earliestinformedconsentdateasnumber)}'</error>
+    return <error rule="CG0068" variable="DSDECOD" dataset="DS" rulelastupdate="2020-08-04">For subject USUBJID='{data($usubjidvalue)}', the earliest informed consent date in DS (DSDECOD='INFORMED CONSENT OBTAINED') does not correspond to the informed consent date RFICDTC={data($dminformedconsentdate)} in DM. The earliest informed consent date found in DS is '{data($earliestinformedconsentdateasnumber)}'</error>
 	
 	

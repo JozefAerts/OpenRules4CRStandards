@@ -15,20 +15,25 @@ See the License for the specific language governing permissions and limitations 
 (: Made faster using "GROUP BY" :)
 xquery version "3.0";
 declare namespace def = "http://www.cdisc.org/ns/def/v2.0";
+declare namespace def21 = "http://www.cdisc.org/ns/def/v2.1";
 declare namespace odm="http://www.cdisc.org/ns/odm/v1.3";
 declare namespace data="http://www.cdisc.org/ns/Dataset-XML/v1.0";
 declare namespace xlink="http://www.w3.org/1999/xlink";
 (: "declare variable ... external" allows to pass $base and $define from an external programm :)
 declare variable $base external;
 declare variable $define external; 
+declare variable $defineversion external;
 (: let $base := '/db/fda_submissions/cdisc01/' 
 let $define := 'define2-0-0-example-sdtm.xml' :) 
 let $definedoc := doc(concat($base,$define)) 
 (: According to rule CG0049, the rule applies to all datasets. Is this correct? Shouldn't it be limited to EVENTS? :)
 (: Iterate over the EVENTS datasets :)
-for $itemgroupdef in doc(concat($base,$define))//odm:ItemGroupDef[upper-case(@def:Class)='EVENTS']
+for $itemgroupdef in $definedoc//odm:ItemGroupDef[upper-case(@def:Class)='EVENTS' or upper-case(./def21:Class/@Name)='EVENTS']
     let $name := $itemgroupdef/@Name
-    let $datasetname := $itemgroupdef/def:leaf/@xlink:href
+	let $datasetname := (
+		if($defineversion='2.1') then $itemgroupdef/def21:leaf/@xlink:href
+		else $itemgroupdef/def:leaf/@xlink:href
+	)
     let $datasetlocation := concat($base,$datasetname)
     let $datasetdoc := doc($datasetlocation)
     (: and get the OID of --DECOD and --PTCD :)
@@ -68,6 +73,6 @@ for $itemgroupdef in doc(concat($base,$define))//odm:ItemGroupDef[upper-case(@de
             (: the two -DECOD values must be identical, as they have the same value for -PTCD :)
             (: we however need to exclude the case that the value of -PTCD is null or empty :)
             where $ptcd and not($decod1 = $decod2)
-            return <error rule="CG0049" dataset="{$name}" variable="{data($decodname)}" rulelastupdate="2020-06-09" recordnumber="{$recnum2}">Inconsistent value for {data($decodname)} within {data($ptcdname)}: Record {data($recnum2)} has {data($decodname)}={data($decod2)} whereas recordnumber={data($recnum1)} has {data($decodname)}={data($decod1)} for the same value of {data($ptcdname)}={data($ptcd)}</error>  
+            return <error rule="CG0049" dataset="{$name}" variable="{data($decodname)}" rulelastupdate="2020-08-04" recordnumber="{$recnum2}">Inconsistent value for {data($decodname)} within {data($ptcdname)}: Record {data($recnum2)} has {data($decodname)}={data($decod2)} whereas recordnumber={data($recnum1)} has {data($decodname)}={data($decod1)} for the same value of {data($ptcdname)}={data($ptcd)}</error>  
 
 	

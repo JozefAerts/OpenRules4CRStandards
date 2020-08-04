@@ -16,6 +16,7 @@ Required variables must always be included in the dataset and cannot be null for
 (: An XML4Pharma RESTful web secvice is used to retrieve the required variables for each domain/dataset :)
 xquery version "3.0";
 declare namespace def = "http://www.cdisc.org/ns/def/v2.0";
+declare namespace def21 = "http://www.cdisc.org/ns/def/v2.1";
 declare namespace odm="http://www.cdisc.org/ns/odm/v1.3";
 declare namespace data="http://www.cdisc.org/ns/Dataset-XML/v1.0";
 declare namespace xlink="http://www.w3.org/1999/xlink";
@@ -29,28 +30,34 @@ declare function functx:is-value-in-sequence
 (: "declare variable ... external" allows to pass $base and $define from an external programm :)
 declare variable $base external;
 declare variable $define external;
+declare variable $defineversion external;
 declare variable $datasetname external;
 (: let $base := 'LZZT_SDTM_Dataset-XML/' :)
 (: let $define := 'define_2_0.xml' :)
 (: let $datasetname := 'LB' :)
 (: let $datasetname := 'ALL' :)
+let $definedoc := doc(concat($base,$define))
 (: EITHER provide $datasetname=:'ALL', meaning: validate for all datasets referenced from the define.xml OR:
 $datasetname:='XX' where XX is a specific dataset, MEANING validate for a single dataset or domain only :)
 (:  get the definitions for the domains (ItemGroupDefs in define.xml) :)
 let $datasets := (
-    if($datasetname != 'ALL') then doc(concat($base,$define))//odm:ItemGroupDef[@Domain=$datasetname or starts-with(@Name,$datasetname)]
-    else doc(concat($base,$define))//odm:ItemGroupDef
+    if($datasetname != 'ALL') then $definedoc//odm:ItemGroupDef[@Domain=$datasetname or starts-with(@Name,$datasetname)]
+    else $definedoc//odm:ItemGroupDef
 )
-(: the define.xml document itself :)
-let $definedoc := doc(concat($base,$define))
 (: get the SDTM version :)
-let $sdtmigversion := $definedoc//odm:MetaDataVersion[1]/@def:StandardVersion
+let $sdtmigversion := (
+	if($defineversion='2.1') then $definedoc//odm:MetaDataVersion/def21:Standards/def21:Standard[@Name='SDTMIG'][1]/@Version
+	else $definedoc//odm:MetaDataVersion/@def:StandardVersion
+)
 (: ATTENTION: webservice base has been been changed :)
 let $webservicebase := 'http://www.xml4pharmaserver.com:8080/SDSService/rest/VariablesForDomain/SDTM/'
 (: iterate over all datasets mentioned in the define.xml :)
 for $itemgroup in $datasets
     let $itemgroupoid := $itemgroup/@OID
-    let $dataset := $itemgroup/def:leaf/@xlink:href
+	let $dataset := (
+		if($defineversion='2.1') then $itemgroup/def21:leaf/@xlink:href
+		else $itemgroup/def:leaf/@xlink:href
+	)
     let $dsname := $itemgroup/@Name
     (: let $foo := trace($dsname,'Treating dataset: ') :)
     let $domain := ( 
@@ -80,6 +87,6 @@ for $itemgroup in $datasets
             let $varname := $definedoc//odm:ItemDef[@OID=$varoid]/@Name
             (: give an error when there is no datapoint ('ItemData') for the required variable :)
             where not($record/odm:ItemData[@ItemOID=$varoid]) 
-            return <error rule="CG0014" dataset="{$dsname}" variable="{data($varname)}" rulelastupdate="2020-06-11" recordnumber="{$recnum}">No data found for required variable {data($varname)} in record number {data($recnum)} in dataset {data($datasetname)}</error> 
+            return <error rule="CG0014" dataset="{$dsname}" variable="{data($varname)}" rulelastupdate="2020-08-04" recordnumber="{$recnum}">No data found for required variable {data($varname)} in record number {data($recnum)} in dataset {data($datasetname)}</error> 
 	 
 	

@@ -14,6 +14,7 @@ See the License for the specific language governing permissions and limitations 
 (: Rule CG0288 - When TSVCDREF = 'CDISC' then TSVALCD = valid code in the  version identified in TSVCDVER :)
 xquery version "3.0";
 declare namespace def = "http://www.cdisc.org/ns/def/v2.0";
+declare namespace def21 = "http://www.cdisc.org/ns/def/v2.1";
 declare namespace odm="http://www.cdisc.org/ns/odm/v1.3";
 declare namespace data="http://www.cdisc.org/ns/Dataset-XML/v1.0";
 declare namespace xlink="http://www.w3.org/1999/xlink";
@@ -28,13 +29,14 @@ declare function functx:is-value-in-sequence
 (: "declare variable ... external" allows to pass $base and $define from an external programm :)
 declare variable $base external;
 declare variable $define external;
+declare variable $defineversion external;
 (: let $base := '/db/fda_submissions/cdisc01/' :)
 (: let $define := 'define2-0-0-example-sdtm.xml' :)
 let $definedoc := doc(concat($base,$define))
 (: Use of the XML4Pharma RESTful web services (SHARE in future) :)
-let $webservicebase := 'http://www.xml4pharmaserver.com:8080/CDISCCTService/rest/CDISCDefinitionFromNCICode/'
+let $webservicebase := 'http://www.xml4pharmaserver.com:8080/CDISCCTService2/rest/CDISCDefinitionFromNCICode/'
 (: iterate over all TS datasets (there should be only one) :)
-for $itemgroup in doc(concat($base,$define))//odm:ItemGroupDef[@Name='TS']
+for $itemgroup in $definedoc//odm:ItemGroupDef[@Name='TS']
     (: Get the OID for the TSVALCD, TSVCDREF and TSVCDVER variables :)
     let $tsvalcdoid := (
         for $a in $definedoc//odm:ItemDef[@Name='TSVALCD']/@OID
@@ -52,7 +54,10 @@ for $itemgroup in doc(concat($base,$define))//odm:ItemGroupDef[@Name='TS']
         return $a
     )
     (: get the dataset :)
-    let $datasetname := $itemgroup//def:leaf/@xlink:href
+	let $datasetname := (
+		if($defineversion='2.1') then $itemgroup//def21:leaf/@xlink:href
+		else $itemgroup//def:leaf/@xlink:href
+	)
     let $dataset := concat($base,$datasetname)
     let $datasetdoc := doc($dataset)
     (: get the records with TSVCDREF='CDISC' :)
@@ -64,12 +69,12 @@ for $itemgroup in doc(concat($base,$define))//odm:ItemGroupDef[@Name='TS']
         let $tsvalcd := $record/odm:ItemData[@ItemOID=$tsvalcdoid]/@Value
         (: generate the webservice request string, like:
         http://www.xml4pharmaserver.com:8080/CDISCCTService/rest/CDISCDefinitionFromNCICode/C15228/2016-12-16 :)
-        let $webservice := concat($webservicebase,$tsvalcd,'/',$tsvcdver)
+        let $webservice := concat($webservicebase,$tsvalcd,'/',$tsvcdver,'.xml')
         (: apply the webservice: when "null" is returned (as string) it is an invalid NCI code for that codelist version,
         if however the NCI code is correct for that version, the CDISC definition is returned, like:  
         "A study in which neither the subject nor the investigator nor the research team interacting with the subject or data during the trial knows what treatment a subject is receiving. (CDISC glossary)"  :)
         let $webserviceresponse := doc($webservice)/XML4PharmaServerWebServiceResponse/Response
         where $webserviceresponse='null'  (: NCI code not found in the given codelist version :)
-    return  <error rule="CG0288" dataset="TS" variable="TSVALCD" recordnumber="{data($recnum)}" rulelastupdate="2017-02-28">The Value TSVALCD='{data($tsvalcd)}' for version TSVCDVER='{data($tsvalcd)}' for TSVCDREF='CDISC' is not a valid CDISC-CT value this version</error>			
+    return  <error rule="CG0288" dataset="TS" variable="TSVALCD" recordnumber="{data($recnum)}" rulelastupdate="2020-08-04">The Value TSVALCD='{data($tsvalcd)}' for version TSVCDVER='{data($tsvalcd)}' for TSVCDREF='CDISC' is not a valid CDISC-CT value this version</error>			
 		
 	

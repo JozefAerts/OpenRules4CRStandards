@@ -16,12 +16,14 @@ Precondition: VISITNUM in TV.VISITNUM
 :)
 xquery version "3.0";
 declare namespace def = "http://www.cdisc.org/ns/def/v2.0";
+declare namespace def21 = "http://www.cdisc.org/ns/def/v2.1";
 declare namespace odm="http://www.cdisc.org/ns/odm/v1.3";
 declare namespace data="http://www.cdisc.org/ns/Dataset-XML/v1.0";
 declare namespace xlink="http://www.w3.org/1999/xlink";
 (: "declare variable ... external" allows to pass $base and $define from an external programm :)
 declare variable $base external;
 declare variable $define external; 
+declare variable $defineversion external;
 declare variable $datasetname external; 
 (: let $base := '/db/fda_submissions/cdisc01/' 
 let $define := 'define2-0-0-example-sdtm.xml'
@@ -34,12 +36,18 @@ let $visitnumtvoid := (
     return $a 
 )
 (: and the location of the TV document :)
-let $tvlocation := $definedoc//odm:ItemGroupDef[@Name='TV']/def:leaf/@xlink:href
+let $tvlocation := (
+	if($defineversion='2.1') then $definedoc//odm:ItemGroupDef[@Name='TV']/def21:leaf/@xlink:href
+	else $definedoc//odm:ItemGroupDef[@Name='TV']/def:leaf/@xlink:href
+)
 let $tvdatasetdoc := doc(concat($base,$tvlocation))
 (: Iterate over the datasets :)
-for $itemgroupdef in doc(concat($base,$define))//odm:ItemGroupDef[@Name=$datasetname]
+for $itemgroupdef in $definedoc//odm:ItemGroupDef[@Name=$datasetname]
     let $name := $itemgroupdef/@Name
-    let $dsname := $itemgroupdef/def:leaf/@xlink:href
+	let $dsname := (
+		if($defineversion='2.1') then $itemgroupdef/def21:leaf/@xlink:href
+		else $itemgroupdef/def:leaf/@xlink:href
+	)
     let $datasetlocation := concat($base,$dsname)
     let $datasetdoc := doc($datasetlocation)
     (: and get the OID of VISITNUM and VISIT :)
@@ -77,7 +85,7 @@ for $itemgroupdef in doc(concat($base,$define))//odm:ItemGroupDef[@Name=$dataset
             let $recnum2 := $group2/odm:ItemGroupData[1]/@data:ItemGroupDataSeq
             (: return <test>{data($visitnum1)} - {data($visit1)} - {data($visitnum2)} - {data($visit2)}</test> :)
             where $visitnum1 = $visitnum2 and $visit1 != $visit2
-            return <error rule="CG0035" rulelastupdate="2020-06-11" dataset="{data($name)}" variable="VISITNUM" recordnumber="{data($recnum2)}">Combination of VISIT='{data($visit2)}' and VISITNUM={data($visitnum2)} in dataset {data($name)} is inconsistent: 
+            return <error rule="CG0035" rulelastupdate="2020-08-04" dataset="{data($name)}" variable="VISITNUM" recordnumber="{data($recnum2)}">Combination of VISIT='{data($visit2)}' and VISITNUM={data($visitnum2)} in dataset {data($name)} is inconsistent: 
                 record {data($recnum1)}: VISITNUM={data($visitnum1)} - VISIT='{data($visit1)}', 
                 record {data($recnum2)}: VISITNUM={data($visitnum2)} - VISIT='{data($visit2)}'</error>		
 		

@@ -14,6 +14,7 @@ See the License for the specific language governing permissions and limitations 
 (: Rule CG0034: when VISITNUM != null then VISITNUM must in SV.VISITNUM :)
 xquery version "3.0";
 declare namespace def = "http://www.cdisc.org/ns/def/v2.0";
+declare namespace def21 = "http://www.cdisc.org/ns/def/v2.1";
 declare namespace odm="http://www.cdisc.org/ns/odm/v1.3";
 declare namespace data="http://www.cdisc.org/ns/Dataset-XML/v1.0";
 declare namespace xlink="http://www.w3.org/1999/xlink";
@@ -22,11 +23,15 @@ declare namespace functx = "http://www.functx.com";
 (: "declare variable ... external" allows to pass $base and $define from an external programm :)
 declare variable $base external;
 declare variable $define external; 
+declare variable $defineversion external;
 (: let $base := 'LZZT_SDTM_Dataset-XML/' :)
 (: let $define := 'define_2_0.xml' :)
 let $definedoc := doc(concat($base,$define)) 
 (: get the SV dataset :)
-let $svdatasetname := $definedoc//odm:ItemGroupDef[@Name='SV']/def:leaf/@xlink:href
+let $svdatasetname := (
+	if($defineversion='2.1') then $definedoc//odm:ItemGroupDef[@Name='SV']/def21:leaf/@xlink:href
+	else $definedoc//odm:ItemGroupDef[@Name='SV']/def:leaf/@xlink:href
+)
 let $svdatasetdoc := doc(concat($base,$svdatasetname))
 (: get the OID of USUBJID in SV :)
 let $svusubjidoid := (
@@ -59,8 +64,14 @@ let $visitnumpairs := (
 for $itemgroup in $definedoc//odm:ItemGroupDef[not(@Name='SV')]
 	let $datasetname := $itemgroup/@Name
     (: get the location :)
-    let $datasetlocation := $itemgroup/def:leaf/@xlink:href
-    let $datasetdoc := doc(concat($base,$datasetlocation))
+	let $datasetlocation := (
+		if($defineversion='2.1') then $itemgroup/def21:leaf/@xlink:href
+		else $itemgroup/def:leaf/@xlink:href
+	)
+    let $datasetdoc := (
+		if($datasetlocation) then doc(concat($base,$datasetlocation))
+		else ()
+	)
     (: get the OID of USUBJID, VISITNUM, if present :)
     let $usubjidoid := (
         for $a in $definedoc//odm:ItemDef[@Name='USUBJID']/@OID 
@@ -97,6 +108,6 @@ for $itemgroup in $definedoc//odm:ItemGroupDef[not(@Name='SV')]
         (: iterate over all records in the group for which no USUBJID-VISITNUM pair was found in SV :)
         for $record in $group/odm:ItemGroupData 
             let $recnum := $record/@data:ItemGroupDataSeq
-            return <error rule="CG0034" rulelastupdate="2020-06-11" dataset="{data($datasetname)}" variable="VISITNUM" recordnumber="{data($recnum)}">Combination of USUBJID='{data($usubjid)}' and VISITNUM='{data($visitnum)}' in dataset {data($datasetname)} is not found in the SV domain</error>
+            return <error rule="CG0034" rulelastupdate="2020-08-04" dataset="{data($datasetname)}" variable="VISITNUM" recordnumber="{data($recnum)}">Combination of USUBJID='{data($usubjid)}' and VISITNUM='{data($visitnum)}' in dataset {data($datasetname)} is not found in the SV domain</error>
 		
 	

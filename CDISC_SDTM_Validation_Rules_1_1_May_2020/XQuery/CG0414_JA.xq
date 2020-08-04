@@ -14,18 +14,23 @@ See the License for the specific language governing permissions and limitations 
 (: Rule CG0414 - When ETCD != 'UNPLAN' in SE,TA then ETCD = TE.ETCD :)
 xquery version "3.0";
 declare namespace def = "http://www.cdisc.org/ns/def/v2.0";
+declare namespace def21 = "http://www.cdisc.org/ns/def/v2.1";
 declare namespace odm="http://www.cdisc.org/ns/odm/v1.3";
 declare namespace data="http://www.cdisc.org/ns/Dataset-XML/v1.0";
 declare namespace xlink="http://www.w3.org/1999/xlink";
 (: "declare variable ... external" allows to pass $base and $define from an external programm :)
 declare variable $base external;
 declare variable $define external;
+declare variable $defineversion external;
 (: let $base := '/db/fda_submissions/cdiscpilot01/' :)
 (: let $define := 'define_2_0.xml' :)
 let $definedoc := doc(concat($base,$define))
 (: get the TE (Trial Elements) dataset :)
 let $teitemgroupdef := $definedoc//odm:ItemGroupDef[@Name='TE']
-let $tedatasetlocation := $teitemgroupdef/def:leaf/@xlink:href
+let $tedatasetlocation := (
+	if($defineversion='2.1') then $teitemgroupdef/def21:leaf/@xlink:href
+	else $teitemgroupdef/def:leaf/@xlink:href
+)
 let $tedatasetdoc := doc(concat($base,$tedatasetlocation))
 (: get the OID of ETCD in TE :)
 let $teetcdoid := (
@@ -43,8 +48,14 @@ for $itemgroupdef in $definedoc//odm:ItemGroupDef[@Name='SE' or @Name='TA']
         return $a
     )
     (: get the dataset location and document :)
-    let $datasetlocation := $itemgroupdef/def:leaf/@xlink:href
-    let $datasetdoc := doc(concat($base,$datasetlocation))
+	let $datasetlocation := (
+		if($defineversion='2.1') then $itemgroupdef/def21:leaf/@xlink:href
+		else $itemgroupdef/def:leaf/@xlink:href
+	)
+    let $datasetdoc := (
+		if($datasetlocation) then doc(concat($base,$datasetlocation))
+		else ()
+	)
     for $record in $datasetdoc//odm:ItemGroupData[odm:ItemData[@ItemOID=$etcdoid and @Value!='UNPLAN']]
         let $recnum := $record/@data:ItemGroupDataSeq
         (: get the value of ETCD :)
@@ -52,6 +63,6 @@ for $itemgroupdef in $definedoc//odm:ItemGroupDef[@Name='SE' or @Name='TA']
         (: and check whether there is such a value in TE :)
         let $teetcdcount := count($tedatasetdoc//odm:ItemGroupData/odm:ItemData[@ItemOID=$teetcdoid and @Value=$etcd])
         where $teetcdcount = 0
-        return <error rule="CG0414" dataset="{data($name)}" rulelastupdate="2017-03-22" recordnumber="{data($recnum)}">ETCD value='{data($etcd)}' was not found in TE</error>											
+        return <error rule="CG0414" dataset="{data($name)}" rulelastupdate="2020-08-04" recordnumber="{data($recnum)}">ETCD value='{data($etcd)}' was not found in TE</error>											
 		
 	

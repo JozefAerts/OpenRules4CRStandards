@@ -14,6 +14,7 @@ See the License for the specific language governing permissions and limitations 
 (: Rule CG0449 - When TSPARMCD in ('INDIC', 'TDIGRP') then TSVALCD is a valid concept identifier from SNOMED CT :)
 xquery version "3.0";
 declare namespace def = "http://www.cdisc.org/ns/def/v2.0";
+declare namespace def21 = "http://www.cdisc.org/ns/def/v2.1";
 declare namespace odm="http://www.cdisc.org/ns/odm/v1.3";
 declare namespace data="http://www.cdisc.org/ns/Dataset-XML/v1.0";
 declare namespace xlink="http://www.w3.org/1999/xlink";
@@ -21,14 +22,20 @@ declare namespace xs="http://www.w3.org/2001/XMLSchema";
 (: "declare variable ... external" allows to pass $base and $define from an external programm :)
 declare variable $base external;
 declare variable $define external;
+declare variable $defineversion external;
 (: let $base := '/db/fda_submissions/cdiscpilot01/'  :)
 (: let $define := 'define_2_0.xml' :)
 let $definedoc := doc(concat($base,$define))
 (: get the TS dataset :)
-let $tsdataset := doc(concat($base,$define))//odm:ItemGroupDef[@Name='TS']
-let $tsdatasetname := $tsdataset/def:leaf/@xlink:href
-let $tsdatasetlocation := concat($base,$tsdatasetname)
-let $datasetdoc := doc($tsdatasetlocation)
+let $tsdataset := $definedoc//odm:ItemGroupDef[@Name='TS']
+let $tsdatasetname := (
+	if($defineversion='2.1') then $tsdataset/def21:leaf/@xlink:href
+	else $tsdataset/def:leaf/@xlink:href
+)
+let $tsdatasetdoc := (
+	if($tsdatasetname) then doc(concat($base,$tsdatasetname))
+	else ()
+)
 (: get the OID of the TSPARMCD and TSVALCD variables :)
 let $tsparmcdoid := (
     for $a in $definedoc//odm:ItemDef[@Name='TSPARMCD']/@OID 
@@ -41,7 +48,7 @@ let $tsvalcdoid := (
     return $a
 )
 (: get all the records that have TSPARMCD=INDIC or TSPARMCD=TDIGRP :)
-for $record in $datasetdoc//odm:ItemGroupData[odm:ItemData[@ItemOID=$tsparmcdoid and (@Value='INDIC' or @Value='TDIGRP')]]
+for $record in $tsdatasetdoc//odm:ItemGroupData[odm:ItemData[@ItemOID=$tsparmcdoid and (@Value='INDIC' or @Value='TDIGRP')]]
     let $recnum := $record/@data:ItemGroupDataSeq
     (: get the value of TSPARMCD  :)
     let $tsparmcdvalue := $record/odm:ItemData[@ItemOID=$tsparmcdoid]/@Value
@@ -57,6 +64,6 @@ for $record in $datasetdoc//odm:ItemGroupData[odm:ItemData[@ItemOID=$tsparmcdoid
 	    let $webserviceresult := doc($webservice)
 	    let $status := $webserviceresult/snomedctStatus/status
 	    where $status != 1
-	    return <error rule="CG0449" dataset="TS" variable="TSVALCD" rulelastupdate="2020-06-19" recordnumber="{data($recnum)}">Invalid TSVALCD, value={data($tsvalcdvalue)} for TSPARMCD=INDIC is not a valid SNOMED-CT code in dataset TS</error>
+	    return <error rule="CG0449" dataset="TS" variable="TSVALCD" rulelastupdate="2020-08-04" recordnumber="{data($recnum)}">Invalid TSVALCD, value={data($tsvalcdvalue)} for TSPARMCD=INDIC is not a valid SNOMED-CT code in dataset TS</error>
 		
 	

@@ -15,6 +15,7 @@ See the License for the specific language governing permissions and limitations 
  REMARK that SVUPDES is permissible :)
 xquery version "3.0";
 declare namespace def = "http://www.cdisc.org/ns/def/v2.0";
+declare namespace def21 = "http://www.cdisc.org/ns/def/v2.1";
 declare namespace odm="http://www.cdisc.org/ns/odm/v1.3";
 declare namespace data="http://www.cdisc.org/ns/Dataset-XML/v1.0";
 declare namespace xlink="http://www.w3.org/1999/xlink";
@@ -27,13 +28,17 @@ declare function functx:is-value-in-sequence
 } ;
 declare variable $base external;
 declare variable $define external; 
+declare variable $defineversion external;
 (: let $base := '/db/fda_submissions/cdiscpilot01/'  :)
 (: let $define := 'define_2_0.xml' :)
 let $definedoc := doc(concat($base,$define))
 (: get the SV dataset definition :)
 let $svitemgroupdef := $definedoc//odm:ItemGroupDef[@Name='SV']
 (: and the dataset location and the document itself :)
-let $svdatasetlocation := $svitemgroupdef/def:leaf/@xlink:href
+let $svdatasetlocation := (
+	if($defineversion='2.1') then $svitemgroupdef/def21:leaf/@xlink:href
+	else $svitemgroupdef/def:leaf/@xlink:href
+)
 let $svdatasetdoc := ( 
 	if($svdatasetlocation) then doc(concat($base,$svdatasetlocation))
 	else ()
@@ -50,9 +55,15 @@ let $svupdesoid := (
         return $a
 )
 (: we also need the TV dataset :)
-let $tvitemgroupdef := $definedoc//odm:ItemGroupDef[@OID='TV']
-let $tvdatsetlocation := $tvitemgroupdef/def:leaf/@xlink:href
-let $tvdatasetdoc := doc(concat($base,$tvdatsetlocation))
+let $tvitemgroupdef := $definedoc//odm:ItemGroupDef[@Name='TV']
+let $tvdatsetlocation := (
+	if($defineversion='2.1') then $tvitemgroupdef/def21:leaf/@xlink:href
+	else $tvitemgroupdef/def:leaf/@xlink:href
+)
+let $tvdatasetdoc := (
+	if($tvdatsetlocation) then doc(concat($base,$tvdatsetlocation))
+	else ()
+)
 (: and the OID of visitnum in TV :)
 let $tvvisitnumoid := (
     for $a in $definedoc//odm:ItemDef[@Name='VISITNUM']/@OID 
@@ -68,6 +79,6 @@ for $record in $svdatasetdoc//odm:ItemGroupData[not(odm:ItemData[@ItemOID=$svupd
     let $svvisitnum := $record/odm:ItemData[@ItemOID=$svvisitnumoid]/@Value
     (: SV.VISITNUM must be one of TV.VISITNUM :)
     where not(functx:is-value-in-sequence($svvisitnum,$tvvisitnums))
-    return <error rule="CG0213" dataset="SV" variable="VISITNUM" rulelastupdate="2020-06-15" recordnumber="{data($recnum)}">SV.VISITNUM={data($svvisitnum)} was not found in TV for SVUPDES=null</error>						
+    return <error rule="CG0213" dataset="SV" variable="VISITNUM" rulelastupdate="2020-08-04" recordnumber="{data($recnum)}">SV.VISITNUM={data($svvisitnum)} was not found in TV for SVUPDES=null</error>						
 		
 	

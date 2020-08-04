@@ -15,18 +15,20 @@ See the License for the specific language governing permissions and limitations 
 (: OPTIMIZED - made much more faster using "GROUP BY" :)
 xquery version "3.0";
 declare namespace def = "http://www.cdisc.org/ns/def/v2.0";
+declare namespace def21 = "http://www.cdisc.org/ns/def/v2.1";
 declare namespace odm="http://www.cdisc.org/ns/odm/v1.3";
 declare namespace data="http://www.cdisc.org/ns/Dataset-XML/v1.0";
 declare namespace xlink="http://www.w3.org/1999/xlink";
 (: "declare variable ... external" allows to pass $base and $define from an external programm :)
 declare variable $base external;
 declare variable $define external;
-declare variable $domain external
+declare variable $defineversion external;
+declare variable $datasetname external;
 (: let $base := '/db/fda_submissions/cdiscpilot01/' :)
 (: let $define := 'define_2_0.xml' :)
 let $definedoc := doc(concat($base,$define))
 (: iterate over all SUPP-- records :)
-for $itemgroupdef in $definedoc//odm:ItemGroupDef[starts-with(@Name,'SUPP')][@Name=$domain]
+for $itemgroupdef in $definedoc//odm:ItemGroupDef[starts-with(@Name,'SUPP')][@Name=$datasetname]
     let $name := $itemgroupdef/@Name
     (: get the OID of USUBJID in the SUPP-- dataset :)
     let $usubjidoid := (
@@ -48,13 +50,19 @@ for $itemgroupdef in $definedoc//odm:ItemGroupDef[starts-with(@Name,'SUPP')][@Na
     )
     (: get the OID of QNAM in the SUPP-- dataset :)
     let $qnamoid := (
-        for $a in doc(concat($base,$define))//odm:ItemDef[@Name='QNAM']/@OID 
+        for $a in $definedoc//odm:ItemDef[@Name='QNAM']/@OID 
         where $a = $itemgroupdef/odm:ItemRef/@ItemOID
         return $a
     )
 (: get the location of the SUPP-- dataset :)
-let $suppdatasetlocation := $itemgroupdef/def:leaf/@xlink:href
-let $suppdatasetdoc := doc(concat($base,$suppdatasetlocation))
+let $suppdatasetlocation := (
+	if($defineversion='2.1') then $itemgroupdef/def21:leaf/@xlink:href
+	else $itemgroupdef/def:leaf/@xlink:href
+)
+let $suppdatasetdoc := (
+	if($suppdatasetlocation) then doc(concat($base,$suppdatasetlocation))
+	else ()
+)
 (: group the records in the SUPP-- dataset by USUBJID,IDVAR,IDVARVAL,QNAM - there should be only one record per group :)
 let $orderedrecords := (
         for $record in $suppdatasetdoc//odm:ItemGroupData
@@ -77,6 +85,6 @@ for $group in $orderedrecords
     (: count the records in this group :)
     let $count := count($group/odm:ItemGroupData)
     where $count > 1
-    return <error rule="CG0411" dataset="{data($name)}" rulelastupdate="2020-06-18" recordnumber="{data($recnum)}">The combination of USUBJID={data($usubjidvalue)}, IDVAR={data($idvar)}, IDVARVAL={data($idvarval)} and QNAM={data($qnam)} is not unique</error>			
+    return <error rule="CG0411" dataset="{data($name)}" rulelastupdate="2020-08-04" recordnumber="{data($recnum)}">The combination of USUBJID={data($usubjidvalue)}, IDVAR={data($idvar)}, IDVARVAL={data($idvarval)} and QNAM={data($qnam)} is not unique</error>			
 		
 	

@@ -14,11 +14,13 @@ See the License for the specific language governing permissions and limitations 
 (: Rule CG0202 - SUPPxx - When QORIG = 'ASSIGNED' then QEVAL != null :)
 xquery version "3.0";
 declare namespace def = "http://www.cdisc.org/ns/def/v2.0";
+declare namespace def21 = "http://www.cdisc.org/ns/def/v2.1";
 declare namespace odm="http://www.cdisc.org/ns/odm/v1.3";
 declare namespace data="http://www.cdisc.org/ns/Dataset-XML/v1.0";
 declare namespace xlink="http://www.w3.org/1999/xlink";
 declare variable $base external;
 declare variable $define external; 
+declare variable $defineversion external;
 (: let $base := '/db/fda_submissions/cdiscpilot01/'  :)
 (: let $define := 'define_2_0.xml' :)
 let $definedoc := doc(concat($base,$define))
@@ -26,8 +28,14 @@ let $definedoc := doc(concat($base,$define))
 for $suppitemgroupdef in $definedoc//odm:ItemGroupDef[starts-with(@Name,'SUPP')]
     let $name := $suppitemgroupdef/@Name
     (: get the dataset location :)
-    let $suppdatasetlocation := $suppitemgroupdef/def:leaf/@xlink:href
-    let $suppdatasetdoc := doc(concat($base,$suppdatasetlocation))
+	let $suppdatasetlocation := (
+		if($defineversion='2.1') then $suppitemgroupdef/def21:leaf/@xlink:href
+		else $suppitemgroupdef/def:leaf/@xlink:href
+	)
+    let $suppdatasetdoc := (
+		if($suppdatasetlocation) then doc(concat($base,$suppdatasetlocation))
+		else ()
+	)
     (: we need the OID if QORIG and of QEVAL :)
     let $qorigoid := (
         for $a in $definedoc//odm:ItemDef[@Name='QORIG']/@OID 
@@ -46,6 +54,6 @@ for $suppitemgroupdef in $definedoc//odm:ItemGroupDef[starts-with(@Name,'SUPP')]
         let $qeval := $record/odm:ItemData[@ItemOID=$qevaloid]/@Value
         (: QEVAL must != null :)
         where not($qeval)  (: QEVAL is null :)
-        return <error rule="CG0202" dataset="{data($name)}" variable="QEVAL" recordnumber="{data($recnum)}" rulelastupdate="2020-06-15" >QEVAL may not be null when QORIG='ASSIGNED'</error>			
+        return <error rule="CG0202" dataset="{data($name)}" variable="QEVAL" recordnumber="{data($recnum)}" rulelastupdate="2020-08-04" >QEVAL may not be null when QORIG='ASSIGNED'</error>			
 		
 	

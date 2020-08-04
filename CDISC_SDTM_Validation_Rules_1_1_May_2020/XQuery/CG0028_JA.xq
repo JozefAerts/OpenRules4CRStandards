@@ -16,51 +16,61 @@ See the License for the specific language governing permissions and limitations 
 (: TODO: must be done OVER datasets within the same domain :)
 xquery version "3.0";
 declare namespace def = "http://www.cdisc.org/ns/def/v2.0";
+declare namespace def21 = "http://www.cdisc.org/ns/def/v2.1";
 declare namespace odm="http://www.cdisc.org/ns/odm/v1.3";
 declare namespace data="http://www.cdisc.org/ns/Dataset-XML/v1.0";
 declare namespace xlink="http://www.w3.org/1999/xlink";
 (: "declare variable ... external" allows to pass $base and $define from an external programm :)
 declare variable $base external;  
 declare variable $define external;
+declare variable $defineversion external;
 (: let $base := 'LZZT_SDTM_Dataset-XML/' :)
 (: let $define := 'define_2_0.xml' :)
-for $itemgroupdef in doc(concat($base,$define))//odm:ItemGroupDef
-let $domain := $itemgroupdef/@Domain
-let $itemgroupoid := $itemgroupdef/@OID
-let $itemgroupname := $itemgroupdef/@Name
-let $datasetname := $itemgroupdef/def:leaf/@xlink:href
-let $datasets := concat($base,$datasetname) (: result is a set of datasets :)
-(: get the OID of --SEQ, USUBJID :)
-let $usubjidoid := 
-    for $a in doc(concat($base,$define))//odm:ItemDef[@Name='USUBJID']/@OID 
-    where $a = doc(concat($base,$define))//odm:ItemGroupDef[@Name=$itemgroupname]/odm:ItemRef/@ItemOID
-    return $a 
-let $seqoid := 
- 	for $a in doc(concat($base,$define))//odm:ItemDef[ends-with(@Name,'SEQ') and not(@Name='TSSEQ')]/@OID 
-    where $a = doc(concat($base,$define))//odm:ItemGroupDef[@Name=$itemgroupname]/odm:ItemRef/@ItemOID
-    return $a 
- (: get the Name of --SEQ :)
- let $seqname := doc(concat($base,$define))//odm:ItemDef[@OID=$seqoid]/@Name
-(: now iterate over all datasets, but not the Trial design datasets and not for SUPPxx datasets :)
-for $datasetdoc in doc($datasets)
-   let $orderedrecords := (
-    for $record in $datasetdoc//odm:ItemGroupData[odm:ItemData[@ItemOID=$usubjidoid] and odm:ItemData[@ItemOID=$seqoid]]
-        group by 
-        $b := $record/odm:ItemData[@ItemOID=$usubjidoid]/@Value,
-        $c := $record/odm:ItemData[@ItemOID=$seqoid]/@Value
-        return element group {  
-            $record
-        }
-    )	
-    for $group in $orderedrecords
-        (: each group has the same values for USUBJID and --SEQ :)
-        let $usubjid := $group/odm:ItemGroupData[1]/odm:ItemData[@ItemOID=$usubjidoid]/@Value
-        let $seq := $group/odm:ItemGroupData[1]/odm:ItemData[@ItemOID=$seqoid]/@Value
-        let $recnums := $group/odm:ItemGroupData/@data:ItemGroupDataSeq
-        (: for reporting the record number, we take the one of the last record in the group :)
-        let $recnum := $group/odm:ItemGroupData[last()]/@data:ItemGroupDataSeq
-        (: each group should only have one record. If not, there are duplicate values of USUBJID and --SEQ :)
-        where count($group/odm:ItemGroupData) > 1
-            return <error rule="CG0028" dataset="{data($itemgroupname)}" variable="{data($seqname)}" rulelastupdate="2020-06-09" recordnumber="{data($recnum)}">The record with USUBJID = {data($usubjid)} and {data($seqname)} is not unique in the dataset {data($itemgroupname)}. The following records have the same combination of USUBJID and {data($seqname)}: records number {data($recnums)}</error>	
+let $definedoc := doc(concat($base,$define))
+for $itemgroupdef in $definedoc//odm:ItemGroupDef
+	let $domain := $itemgroupdef/@Domain
+	let $itemgroupoid := $itemgroupdef/@OID
+	let $itemgroupname := $itemgroupdef/@Name
+	let $datasetname := (
+		if($defineversion='2.1') then $itemgroupdef/def21:leaf/@xlink:href
+		else $itemgroupdef/def:leaf/@xlink:href
+	)
+	(: Currently, $datasetdocs only represents a single dataset: TODO: treat "splitted" datasets :)
+	let $datasetdocs := (
+		if($datasetname) then doc(concat($base,$datasetname))
+		else ()
+	)
+	(: get the OID of --SEQ, USUBJID :)
+	let $usubjidoid := 
+		for $a in  $definedoc//odm:ItemDef[@Name='USUBJID']/@OID 
+		where $a =  $definedoc//odm:ItemGroupDef[@Name=$itemgroupname]/odm:ItemRef/@ItemOID
+		return $a 
+	let $seqoid := 
+		for $a in  $definedoc//odm:ItemDef[ends-with(@Name,'SEQ') and not(@Name='TSSEQ')]/@OID 
+		where $a =  $definedoc//odm:ItemGroupDef[@Name=$itemgroupname]/odm:ItemRef/@ItemOID
+		return $a 
+	 (: get the Name of --SEQ :)
+	 let $seqname :=  $definedoc//odm:ItemDef[@OID=$seqoid]/@Name
+	(: now iterate over all datasets, but not the Trial design datasets and not for SUPPxx datasets :)
+	for $datasetdoc in $datasetdocs
+	   let $orderedrecords := (
+		for $record in $datasetdoc//odm:ItemGroupData[odm:ItemData[@ItemOID=$usubjidoid] and odm:ItemData[@ItemOID=$seqoid]]
+			group by 
+			$b := $record/odm:ItemData[@ItemOID=$usubjidoid]/@Value,
+			$c := $record/odm:ItemData[@ItemOID=$seqoid]/@Value
+			return element group {  
+				$record
+			}
+		)	
+		for $group in $orderedrecords
+			(: each group has the same values for USUBJID and --SEQ :)
+			let $usubjid := $group/odm:ItemGroupData[1]/odm:ItemData[@ItemOID=$usubjidoid]/@Value
+			let $seq := $group/odm:ItemGroupData[1]/odm:ItemData[@ItemOID=$seqoid]/@Value
+			let $recnums := $group/odm:ItemGroupData/@data:ItemGroupDataSeq
+			(: for reporting the record number, we take the one of the last record in the group :)
+			let $recnum := $group/odm:ItemGroupData[last()]/@data:ItemGroupDataSeq
+			(: each group should only have one record. If not, there are duplicate values of USUBJID and --SEQ :)
+			where count($group/odm:ItemGroupData) > 1
+				return <error rule="CG0028" dataset="{data($itemgroupname)}" variable="{data($seqname)}" rulelastupdate="2020-08-04" recordnumber="{data($recnum)}">The record with USUBJID = {data($usubjid)} and {data($seqname)} is not unique in the dataset {data($itemgroupname)}. The following records have the same combination of USUBJID and {data($seqname)}: records number {data($recnums)}</error>	
 	
 	

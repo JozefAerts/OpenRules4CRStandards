@@ -14,18 +14,21 @@ See the License for the specific language governing permissions and limitations 
 (: Rule CG0420 - When --OCCUR = 'N' then --STRF = null :)
 xquery version "3.0";
 declare namespace def="http://www.cdisc.org/ns/def/v2.0";
+declare namespace def21="http://www.cdisc.org/ns/def/v2.1";
 declare namespace odm="http://www.cdisc.org/ns/odm/v1.3";
 declare namespace data="http://www.cdisc.org/ns/Dataset-XML/v1.0";
 declare namespace xlink="http://www.w3.org/1999/xlink";
 (: "declare variable ... external" allows to pass $base and $define from an external programm :)
 declare variable $base external;
 declare variable $define external;
+declare variable $defineversion external;
 declare variable $datasetname external;
 (: let $base := '/db/fda_submissions/cdisc01/' :)
 (: let $define := 'define2-0-0-example-sdtm.xml' :)
 let $definedoc := doc(concat($base,$define))
 (: iterate over all the provided datasets within INTERVENTIONS and EVENTS dataset definitions :)
-for $itemgroupdef in $definedoc//odm:ItemGroupDef[@Name=$datasetname][upper-case(@def:Class)='INTERVENTIONS' or upper-case(@def:Class)='EVENTS']
+for $itemgroupdef in $definedoc//odm:ItemGroupDef[@Name=$datasetname][upper-case(@def:Class)='INTERVENTIONS' or upper-case(@def:Class)='EVENTS' 
+		or upper-case(./def21:Class/@Name)='INTERVENTIONS' or upper-case(./def21:Class/@Name)='EVENTS']
     let $name := $itemgroupdef/@Name
     (: get the OID of --OCCUR and of --STRF (if any) :)
     let $strfoid := (
@@ -41,8 +44,14 @@ for $itemgroupdef in $definedoc//odm:ItemGroupDef[@Name=$datasetname][upper-case
     )
     let $occurname := $definedoc//odm:ItemDef[@OID=$occuroid]/@Name
     (: get the location of the dataset and the document :)
-    let $datasetlocation := $itemgroupdef/def:leaf/@xlink:href
-    let $datasetdoc := doc(concat($base,$datasetlocation))
+	let $datasetlocation := (
+		if($defineversion='2.1') then $itemgroupdef/def21:leaf/@xlink:href
+		else $itemgroupdef/def:leaf/@xlink:href
+	)
+    let $datasetdoc := (
+		if($datasetlocation) then doc(concat($base,$datasetlocation))
+		else ()
+	)
     (: iterate over all the records in the dataset, but ONLY when --OCCUR and --STRF have been defined,
     and only those for which --OCCUR='N'  :)
     for $record in $datasetdoc[$occuroid and $strfoid]//odm:ItemGroupData[odm:ItemData[@ItemOID=$occuroid and @Value='N']]
@@ -51,6 +60,6 @@ for $itemgroupdef in $definedoc//odm:ItemGroupDef[@Name=$datasetname][upper-case
         let $strf := $record/odm:ItemData[@ItemOID=$strfoid]/@Value
         (: --STRF must be null :)
         where $strf and string-length($strf)>0
-        return <error rule="CG0420" dataset="{data($name)}" variable="{data($strfname)}" rulelastupdate="2020-06-18" recordnumer="{data($recnum)}">{data($occurname)}='N' but {data($strfname)} is not null. {data($strfname)}='{data($strf)}' is found</error>				
+        return <error rule="CG0420" dataset="{data($name)}" variable="{data($strfname)}" rulelastupdate="2020-08-04" recordnumer="{data($recnum)}">{data($occurname)}='N' but {data($strfname)} is not null. {data($strfname)}='{data($strf)}' is found</error>				
 		
 	

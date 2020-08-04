@@ -14,12 +14,14 @@ See the License for the specific language governing permissions and limitations 
 (: Rule CG0066: When DSCAT = 'PROTOCOL MILESTONE' then DSTERM = DSDECOD :)
 xquery version "3.0";
 declare namespace def = "http://www.cdisc.org/ns/def/v2.0";
+declare namespace def21 = "http://www.cdisc.org/ns/def/v2.1";
 declare namespace odm="http://www.cdisc.org/ns/odm/v1.3";
 declare namespace data="http://www.cdisc.org/ns/Dataset-XML/v1.0";
 declare namespace xlink="http://www.w3.org/1999/xlink";
 (: "declare variable ... external" allows to pass $base and $define from an external programm :)
 declare variable $base external; 
 declare variable $define external; 
+declare variable $defineversion external;
 (: let $base := '/db/fda_submissions/cdisc01/' :)
 (: let $define := 'define2-0-0-example-sdtm.xml' :)
 let $definedoc := doc(concat($base,$define))
@@ -42,7 +44,10 @@ let $dsdecodoid := (
     return $a
 )
 (: get the location of the dataset :)
-let $dsdatasetlocation := $dsitemgroupdef/def:leaf/@xlink:href
+let $dsdatasetlocation := (
+	if($defineversion='2.1') then $dsitemgroupdef/def21:leaf/@xlink:href
+	else $dsitemgroupdef/def:leaf/@xlink:href
+)
 let $dsdatasetdoc := doc(concat($base,$dsdatasetlocation))
 (: Iterate over all records for which DSCAT='PROTOCOL MILESTONE' :)
 for $record in $dsdatasetdoc//odm:ItemGroupData[odm:ItemData[@ItemOID=$dscatoid and @Value='PROTOCOL MILESTONE']]
@@ -52,6 +57,6 @@ for $record in $dsdatasetdoc//odm:ItemGroupData[odm:ItemData[@ItemOID=$dscatoid 
     let $dsdecodvalue := $record/odm:ItemData[@ItemOID=$dsdecodoid]/@Value
     (: the value of DSTERM must be identical to the value of DSDECOD :)
     where not($dsdecodvalue=$dstermvalue)
-    return <error rule="CG0066" variable="DSDECOD" dataset="DS" rulelastupdate="2020-06-11" recordnumber="{data($recnum)}">The value of DSDECOD is not identical to the value of DSTERM although the value of DSCAT='PROTOCOL MILESTONE'. Value found for DSDECOD='{data($dsdecodvalue)}', value found for DSTERM='{data($dstermvalue)}' </error>			
+    return <error rule="CG0066" variable="DSDECOD" dataset="DS" rulelastupdate="2020-08-04" recordnumber="{data($recnum)}">The value of DSDECOD is not identical to the value of DSTERM although the value of DSCAT='PROTOCOL MILESTONE'. Value found for DSDECOD='{data($dsdecodvalue)}', value found for DSTERM='{data($dstermvalue)}' </error>			
 	
 	

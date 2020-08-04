@@ -14,18 +14,23 @@ See the License for the specific language governing permissions and limitations 
 (: Rule CG0208 - SE - When ETCD != null then SESTDTC != null :)
 xquery version "3.0";
 declare namespace def = "http://www.cdisc.org/ns/def/v2.0";
+declare namespace def21 = "http://www.cdisc.org/ns/def/v2.1";
 declare namespace odm="http://www.cdisc.org/ns/odm/v1.3";
 declare namespace data="http://www.cdisc.org/ns/Dataset-XML/v1.0";
 declare namespace xlink="http://www.w3.org/1999/xlink";
 declare variable $base external;
 declare variable $define external; 
+declare variable $defineversion external;
 (: let $base := '/db/fda_submissions/cdiscpilot01/'  :)
 (: let $define := 'define_2_0.xml' :)
 let $definedoc := doc(concat($base,$define))
 (: get the SE dataset definition :)
 let $seitemgroupdef := $definedoc//odm:ItemGroupDef[@Name='SE']
 (: and the dataset location :)
-let $sedatasetlocation := $seitemgroupdef/def:leaf/@xlink:href
+let $sedatasetlocation := (
+	if($defineversion='2.1') then $seitemgroupdef/def21:leaf/@xlink:href
+	else $seitemgroupdef/def:leaf/@xlink:href
+)
 let $sedatasetdoc := (
 	if($sedatasetlocation) then doc(concat($base,$sedatasetlocation))
 	else ()
@@ -50,6 +55,6 @@ for $record in $sedatasetdoc//odm:ItemGroupData[odm:ItemData[@ItemOID=$etcdoid]]
     let $sestdtc := $record/odm:ItemData[@ItemOID=$sestdtcoid]
     (: SESTDTC may not be null :)
     where not($sestdtc)  (: SESTDTC is null :)
-        return <error rule="CG0208" dataset="SE" variable="SESTDTC" rulelastupdate="2020-06-15" recordnumber="{data($recnum)}">SESTDTC may not be null for ETCD={data($etcd)}</error>			
+        return <error rule="CG0208" dataset="SE" variable="SESTDTC" rulelastupdate="2020-08-04" recordnumber="{data($recnum)}">SESTDTC may not be null for ETCD={data($etcd)}</error>			
 		
 	

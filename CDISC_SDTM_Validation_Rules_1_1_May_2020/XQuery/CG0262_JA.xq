@@ -14,6 +14,7 @@ See the License for the specific language governing permissions and limitations 
 (: Rule CG0262 - when TSVAL(n+1) != null then TSVALn != null :)
 xquery version "3.0";
 declare namespace def = "http://www.cdisc.org/ns/def/v2.0";
+declare namespace def21 = "http://www.cdisc.org/ns/def/v2.1";
 declare namespace odm="http://www.cdisc.org/ns/odm/v1.3";
 declare namespace data="http://www.cdisc.org/ns/Dataset-XML/v1.0";
 declare namespace xlink="http://www.w3.org/1999/xlink";
@@ -22,11 +23,12 @@ declare namespace functx = "http://www.functx.com";
 (: "declare variable ... external" allows to pass $base and $define from an external programm :)
 declare variable $base external;
 declare variable $define external;
+declare variable $defineversion external;
 (: let $base := '/db/fda_submissions/cdisc01/' :)
 (: let $define := 'define2-0-0-example-sdtm.xml' :)
 let $definedoc := doc(concat($base,$define))
 (: iterate over all TS datasets (there should be only one) :)
-for $itemgroup in doc(concat($base,$define))//odm:ItemGroupDef[@Name='TS']
+for $itemgroup in $definedoc//odm:ItemGroupDef[@Name='TS']
     (: Get the OIDs for ALL the TSVALn variables of which the 6th character is a number > 1 :)
     let $tsvalnoids := (
         for $a in $definedoc//odm:ItemDef[starts-with(@Name,'TSVAL') and substring(@Name,6,1) castable as xs:integer 
@@ -35,7 +37,10 @@ for $itemgroup in doc(concat($base,$define))//odm:ItemGroupDef[@Name='TS']
         return $a
     )
     (: get the location of the dataset :)
-    let $tsdatasetlocation := $itemgroup/def:leaf/@xlink:href
+	let $tsdatasetlocation := (
+		if($defineversion='2.1') then $itemgroup/def21:leaf/@xlink:href
+		else $itemgroup/def:leaf/@xlink:href
+	)
     let $datasetdoc := doc(concat($base,$tsdatasetlocation))
     (: iterate over all records in the dataset  :)
     for $record in $datasetdoc//odm:ItemGroupData
@@ -56,6 +61,6 @@ for $itemgroup in doc(concat($base,$define))//odm:ItemGroupDef[@Name='TS']
             let $tsvalmin1value := $record/odm:ItemData[@ItemOID=$tsvalnmin1oid]/@Value
             (: and check that the value is not null or empty :)
             where not(string-length($tsvalmin1value) > 0)
-            return <error rule="CG0262" dataset="TS" variable="{data($tsvalnname)}" recordnumber="{data($recnum)}" rulelastupdate="2020-06-15">{data($tsvalnname)}='{data($tsvalue)}' but {data($tsvalnmin1name)}=null</error>			
+            return <error rule="CG0262" dataset="TS" variable="{data($tsvalnname)}" recordnumber="{data($recnum)}" rulelastupdate="2020-08-04">{data($tsvalnname)}='{data($tsvalue)}' but {data($tsvalnmin1name)}=null</error>			
 		
 	

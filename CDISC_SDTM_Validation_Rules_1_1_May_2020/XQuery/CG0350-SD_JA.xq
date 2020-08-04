@@ -14,6 +14,7 @@ See the License for the specific language governing permissions and limitations 
 (: Rule CG0350 - --SCAT != Domain Name :)
 xquery version "3.0";
 declare namespace def = "http://www.cdisc.org/ns/def/v2.0";
+declare namespace def21 = "http://www.cdisc.org/ns/def/v2.1";
 declare namespace odm="http://www.cdisc.org/ns/odm/v1.3";
 declare namespace data="http://www.cdisc.org/ns/Dataset-XML/v1.0";
 declare namespace xlink="http://www.w3.org/1999/xlink";
@@ -22,6 +23,7 @@ declare namespace functx = "http://www.functx.com";
 (: "declare variable ... external" allows to pass $base and $define from an external programm :)
 declare variable $base external;
 declare variable $define external;
+declare variable $defineversion external;
 declare variable $datasetname external;
 (: let $base := '/db/fda_submissions/cdisc01/' :)
 (: let $define := 'define2-0-0-example-sdtm.xml' :)
@@ -42,7 +44,10 @@ for $itemgroupdef in $definedoc//odm:ItemGroupDef[@Name=$datasetname]
     (: and its full name :)
     let $scatname := $definedoc//odm:ItemDef[@OID=$scatoid]/@Name
     (: get the dataset location and document :)
-    let $datasetlocation := $itemgroupdef/def:leaf/@xlink:href
+	let $datasetlocation := (
+		if($defineversion='2.1') then $itemgroupdef/def21:leaf/@xlink:href
+		else $itemgroupdef/def:leaf/@xlink:href
+	)
     let $datasetdoc := doc(concat($base,$datasetlocation))
     (: iterate over all records for which there is a value for --SCAT :)
     for $record in $datasetdoc//odm:ItemGroupData[odm:ItemData/@ItemOID=$scatoid]
@@ -51,6 +56,6 @@ for $itemgroupdef in $definedoc//odm:ItemGroupDef[@Name=$datasetname]
         let $scat := $record/odm:ItemData[@ItemOID=$scatoid]/@Value
         (: the value of SCAT may not be equal to the domain name :)
         where $scat=$domainname
-        return <error rule="CG0350" dataset="{data($name)}" variable="{data($scatname)}" recordnumber="{data($recnum)}" rulelastupdate="2017-03-14">Value of {data($scatname)}='{data($scat)}' may not be equal to the domain name '{data($domainname)}'</error>															
+        return <error rule="CG0350" dataset="{data($name)}" variable="{data($scatname)}" recordnumber="{data($recnum)}" rulelastupdate="2020-08-04">Value of {data($scatname)}='{data($scat)}' may not be equal to the domain name '{data($domainname)}'</error>															
 		
 	

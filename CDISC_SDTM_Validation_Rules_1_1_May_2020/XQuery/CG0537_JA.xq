@@ -15,12 +15,14 @@ See the License for the specific language governing permissions and limitations 
 	then At most one record per subject per epoch :)
 xquery version "3.0";
 declare namespace def = "http://www.cdisc.org/ns/def/v2.0";
+declare namespace def21 = "http://www.cdisc.org/ns/def/v2.1";
 declare namespace odm="http://www.cdisc.org/ns/odm/v1.3";
 declare namespace data="http://www.cdisc.org/ns/Dataset-XML/v1.0";
 declare namespace xlink="http://www.w3.org/1999/xlink";
 declare namespace xs="http://www.w3.org/2001/XMLSchema";
 declare variable $base external;
 declare variable $define external; 
+declare variable $defineversion external;
 (: let $base := 'LZZT_SDTM_Dataset-XML/' :)
 (: let $define := 'define_2_0.xml' :)
 let $definedoc := doc(concat($base,$define))
@@ -49,7 +51,10 @@ let $epochoid := (
 )
 (: get the location of the DS dataset :)
 (: and the DS document itself :)
-let $dslocation := $dsitemgroupdef/def:leaf/@xlink:href
+let $dslocation := (
+	if($defineversion='2.1') then $dsitemgroupdef/def21:leaf/@xlink:href
+	else $dsitemgroupdef/def:leaf/@xlink:href
+)
 let $dsdoc := (
 	if($dslocation) then doc(concat($base,$dslocation))
     else ()  (: No DS dataset present :)
@@ -69,6 +74,6 @@ let $orderedrecords := (
 (: there may be only 1 record per group :)
 for $group in $orderedrecords
 	where count($group/odm:ItemGroupData) > 1
-	return <error rule="CG0537" dataset="DS" rulelastupdate="2020-06-21">There is more than 1 record ({count($group/odm:ItemGroupData)} records found) for the combination of USUBJID='{data($group/odm:ItemGroupData[1]/odm:ItemData[@ItemOID=$usubjidoid]/@Value)}' and EPOCH='{data($group/odm:ItemGroupData[1]/odm:ItemData[@ItemOID=$epochoid]/@Value)}'</error>	
+	return <error rule="CG0537" dataset="DS" rulelastupdate="2020-08-04">There is more than 1 record ({count($group/odm:ItemGroupData)} records found) for the combination of USUBJID='{data($group/odm:ItemGroupData[1]/odm:ItemData[@ItemOID=$usubjidoid]/@Value)}' and EPOCH='{data($group/odm:ItemGroupData[1]/odm:ItemData[@ItemOID=$epochoid]/@Value)}'</error>	
 	
 	

@@ -14,6 +14,7 @@ See the License for the specific language governing permissions and limitations 
 (: Rule CG0019: Each record is unique per sponsor defined key variables as documented in the define.xml :)
 xquery version "3.0";
 declare namespace def = "http://www.cdisc.org/ns/def/v2.0";
+declare namespace def21 = "http://www.cdisc.org/ns/def/v2.1";
 declare namespace odm="http://www.cdisc.org/ns/odm/v1.3";
 declare namespace data="http://www.cdisc.org/ns/Dataset-XML/v1.0";
 declare namespace xlink="http://www.w3.org/1999/xlink";
@@ -36,23 +37,31 @@ declare function functx:sequence-deep-equal
 (: "declare variable ... external" allows to pass $base and $define from an external programm :)
 declare variable $base external;
 declare variable $define external; 
+declare variable $defineversion external;
 (: let $base := 'LZZT_SDTM_Dataset-XML/' :)
 (: let $define := 'define_2_0.xml' :)
+let $definedoc := doc(concat($base,$define))
 (: iterate over all datasets in the define.xml :)
-for $itemgroup in doc(concat($base,$define))//odm:ItemGroupDef
+for $itemgroup in $definedoc//odm:ItemGroupDef
     (: get the domain name - value of the 'Domain' attribute :)
     let $domain := $itemgroup/@Domain
     (: and the dataset name (@Name attribute) :)
     let $name := $itemgroup/@Name
     (: and get the filename and the corresponding document :)
-    let $filename := $itemgroup/def:leaf/@xlink:href
-    let $datasetdoc := doc(concat($base,$filename))
+	let $filename := (
+		if($defineversion='2.1') then $itemgroup/def21:leaf/@xlink:href
+		else $itemgroup/def:leaf/@xlink:href
+	)
+    let $datasetdoc := (
+		if($filename) then doc(concat($base,$filename))
+		else ()
+	)
     (: get the keys - the following assumes define-XML 2.0 :)
     let $keyoids := $itemgroup/odm:ItemRef[@KeySequence]/@ItemOID
     (: worst case scenario there are no keys defined :)
     return
     if (count($keyoids) = 0) then
-        <error rule="CG0019" dataset="{data($name)}" rulelastupdate="2020-06-08">No keys have been defined for dataset  {data($name)} in the define.xml!</error>
+        <error rule="CG0019" dataset="{data($name)}" rulelastupdate="2020-08-04">No keys have been defined for dataset  {data($name)} in the define.xml!</error>
     else 
     (: we now have the OIDs of the key variables, and that is exactly what we need when working with Dataset-XML :)
     (: iterate over all the records in the dataset :)
@@ -74,6 +83,6 @@ for $itemgroup in doc(concat($base,$define))//odm:ItemGroupDef
             )
             (: compare the two sequences (array), if the contents are equal, this is an error (duplicate records) :)
             where functx:sequence-deep-equal($keyvalues,$keyvalues2)
-            return <error rule="CG0019" dataset="{data($name)}" rulelastupdate="2020-06-08">Records {data($recordnum)} and {data($recordnum2)} have the same values for the key variables as defined in the define.xml</error>			
+            return <error rule="CG0019" dataset="{data($name)}" rulelastupdate="2020-08-04">Records {data($recordnum)} and {data($recordnum2)} have the same values for the key variables as defined in the define.xml</error>			
 			
 	

@@ -14,18 +14,23 @@ See the License for the specific language governing permissions and limitations 
 (: Rule CG0462 - When ECDOSE = null then ECDOSTXT != null :)
 xquery version "3.0";
 declare namespace def = "http://www.cdisc.org/ns/def/v2.0";
+declare namespace def21 = "http://www.cdisc.org/ns/def/v2.1";
 declare namespace odm="http://www.cdisc.org/ns/odm/v1.3";
 declare namespace data="http://www.cdisc.org/ns/Dataset-XML/v1.0";
 declare namespace xlink="http://www.w3.org/1999/xlink";
 (: "declare variable ... external" allows to pass $base and $define from an external programm :)
 declare variable $base external;
 declare variable $define external; 
+declare variable $defineversion external;
 (: let $base := '/db/fda_submissions/cdisc01/' :)
 (: let $define := 'define2-0-0-example-sdtm.xml' :)
 let $definedoc := doc(concat($base,$define))
 (: get the EC dataset :)
 let $ecdataset := $definedoc//odm:ItemGroupDef[@Name='EC']
-let $ecdatasetname := $ecdataset/def:leaf/@xlink:href
+let $ecdatasetname := (
+	if($defineversion='2.1') then $ecdataset/def21:leaf/@xlink:href
+	else $ecdataset/def:leaf/@xlink:href
+)
 let $ecdatasetdoc := (
 	if($ecdatasetname) then doc(concat($base,$ecdatasetname))
 	else () 
@@ -48,6 +53,6 @@ for $record in $ecdatasetdoc//odm:ItemGroupData[not(odm:ItemData[@ItemOID=$ecdos
     let $ecdostxt := $record/odm:ItemData[@ItemOID=$ecdostxtoid]/@Value
     (: ECDOSTXT may not be null :)
     where not($ecdostxt) or string-length($ecdostxt)=0
-    return <error rule="CG0462" dataset="EC" variable="ECDOSTXT" rulelastupdate="2020-06-19" recordnumber="{data($recnum)}">ECDOSTXT must be populated when ECDOSE=null</error>							
+    return <error rule="CG0462" dataset="EC" variable="ECDOSTXT" rulelastupdate="2020-08-04" recordnumber="{data($recnum)}">ECDOSTXT must be populated when ECDOSE=null</error>							
 		
 	

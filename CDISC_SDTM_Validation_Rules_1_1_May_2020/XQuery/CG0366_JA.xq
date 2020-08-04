@@ -14,6 +14,7 @@ See the License for the specific language governing permissions and limitations 
 (: Rule CG0366 - When RDEVID != null then RSUBJID = null :)
 xquery version "3.0";
 declare namespace def = "http://www.cdisc.org/ns/def/v2.0";
+declare namespace def21 = "http://www.cdisc.org/ns/def/v2.1";
 declare namespace odm="http://www.cdisc.org/ns/odm/v1.3";
 declare namespace data="http://www.cdisc.org/ns/Dataset-XML/v1.0";
 declare namespace xlink="http://www.w3.org/1999/xlink";
@@ -22,6 +23,7 @@ declare namespace functx = "http://www.functx.com";
 (: "declare variable ... external" allows to pass $base and $define from an external programm :)
 declare variable $base external;
 declare variable $define external;
+declare variable $defineversion external;
 (: let $base := '/db/fda_submissions/cdisc01/' :)
 (: let $define := 'define2-0-0-example-sdtm.xml' :)
 let $definedoc := doc(concat($base,$define)) 
@@ -40,7 +42,10 @@ for $apitemgroupdef in $definedoc//odm:ItemGroupDef[starts-with(@Name,'AP')]
         return $a
     )
     (: get the location and document for the RELSUB dataset :)
-    let $apdatasetlocation := $apitemgroupdef/def:leaf/@xlink:href
+	let $apdatasetlocation := (
+		if($defineversion='2.1') then $apitemgroupdef/def21:leaf/@xlink:href
+		else $apitemgroupdef/def:leaf/@xlink:href
+	)
     let $apdoc := doc(concat($base,$apdatasetlocation))
     (: iterate over all the records for which RDEVID != null :)
     for $record in $apdoc//odm:ItemGroupData[odm:ItemData[@ItemOID=$rdevidoid]]
@@ -50,6 +55,6 @@ for $apitemgroupdef in $definedoc//odm:ItemGroupDef[starts-with(@Name,'AP')]
         let $rsubjid := $record/odm:ItemData[@ItemOID=$rsubjidoid]/@Value
         (: RSUBJID must be null :)
         where $rsubjid
-        return <error rule="CG0366" dataset="{data($name)}" variable="RSUBJID" recordnumber="{data($recnum)}" rulelastupdate="2017-03-15">RSUBJID='{data($rsubjid)}' must be null as RDEVID='{data($rdevid)}' is not null</error>						
+        return <error rule="CG0366" dataset="{data($name)}" variable="RSUBJID" recordnumber="{data($recnum)}" rulelastupdate="2020-08-04">RSUBJID='{data($rsubjid)}' must be null as RDEVID='{data($rdevid)}' is not null</error>						
 		
 	

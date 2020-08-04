@@ -14,17 +14,19 @@ See the License for the specific language governing permissions and limitations 
 (: Rule CG0397 - When --ORRES != null or --DRVFL = 'Y', then --STRESC != null :)
 xquery version "3.0";
 declare namespace def = "http://www.cdisc.org/ns/def/v2.0";
+declare namespace def21 = "http://www.cdisc.org/ns/def/v2.1";
 declare namespace odm="http://www.cdisc.org/ns/odm/v1.3";
 declare namespace data="http://www.cdisc.org/ns/Dataset-XML/v1.0";
 declare namespace xlink="http://www.w3.org/1999/xlink";
 declare namespace xs="http://www.w3.org/2001/XMLSchema";
 declare variable $base external;
 declare variable $define external; 
+declare variable $defineversion external;
 (: let $base := '/db/fda_submissions/cdisc01/' :)
 (: let $define := 'define2-0-0-example-sdtm.xml' :)
 let $definedoc := doc(concat($base,$define))
 (: iterate over all the FINDINGS datasets :)
-for $itemgroupdef in $definedoc//odm:ItemGroupDef[upper-case(@def:Class)='FINDINGS']
+for $itemgroupdef in $definedoc//odm:ItemGroupDef[upper-case(@def:Class)='FINDINGS' or upper-case(./def21:Class/@Name)='FINDINGS']
     let $name := $itemgroupdef/@Name
     let $domainname := (
         if($itemgroupdef/@Domain) then $itemgroupdef/@Domain
@@ -52,8 +54,14 @@ for $itemgroupdef in $definedoc//odm:ItemGroupDef[upper-case(@def:Class)='FINDIN
     )
     let $drvflname := concat($domainname,'DRVFL')  (: for the case that --DRVFL is not defined in the dataset :)
     (: and the location of the dataset and document :)
-    let $datasetlocation := $itemgroupdef/def:leaf/@xlink:href
-    let $datasetdoc := doc(concat($base,$datasetlocation))
+	let $datasetlocation := (
+		if($defineversion='2.1') then $itemgroupdef/def21:leaf/@xlink:href
+		else $itemgroupdef/def:leaf/@xlink:href
+	)
+    let $datasetdoc := (
+		if($datasetlocation) then doc(concat($base,$datasetlocation))
+		else ()
+	)
     (: iterate over all records in the dataset for which --ORRES is populated or --DRVFL='Y' :)
     for $record in $datasetdoc//odm:ItemGroupData[odm:ItemData[@ItemOID=$orresoid] or odm:ItemData[@ItemOID=$drvfloid]/@Value='Y']
         let $recnum := $record/@data:ItemGroupDataSeq
@@ -61,6 +69,6 @@ for $itemgroupdef in $definedoc//odm:ItemGroupDef[upper-case(@def:Class)='FINDIN
         let $stresc := $record/odm:ItemData[@ItemOID=$strescoid]/@Value
         (: give an error when --STRESC is not populated :)
         where not($stresc)
-        return <error rule="CG0397" dataset="{data($name)}" variable="{data($strescname)}" recordnumber="{data($recnum)}" rulelastupdate="2017-03-17">{data($strescname)} is not populated although {data($orresname)} is populated or {data($drvflname)}='Y'</error>						
+        return <error rule="CG0397" dataset="{data($name)}" variable="{data($strescname)}" recordnumber="{data($recnum)}" rulelastupdate="2020-08-04">{data($strescname)} is not populated although {data($orresname)} is populated or {data($drvflname)}='Y'</error>						
 		
 	

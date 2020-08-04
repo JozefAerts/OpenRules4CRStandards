@@ -15,21 +15,29 @@ See the License for the specific language governing permissions and limitations 
 (: ATTENTION: there seems to be an error in the Excel worksheet: condition and precondition seem to have been interchanged  :)
 xquery version "3.0";
 declare namespace def = "http://www.cdisc.org/ns/def/v2.0";
+declare namespace def21 = "http://www.cdisc.org/ns/def/v2.1";
 declare namespace odm="http://www.cdisc.org/ns/odm/v1.3";
 declare namespace data="http://www.cdisc.org/ns/Dataset-XML/v1.0";
 declare namespace xlink="http://www.w3.org/1999/xlink";
 (: "declare variable ... external" allows to pass $base and $define from an external programm :)
 declare variable $base external;
 declare variable $define external; 
+declare variable $defineversion external;
 (: let $base := 'LZZT_SDTM_Dataset-XML/' :)
 (: let $define := 'define_2_0.xml' :)
 (: define.xml document :)
 let $definedoc := doc(concat($base,$define))
 (: get the SUPPAE dataset - there should only be one :)
 let $suppaedataset := $definedoc//odm:ItemGroupDef[@Name='SUPPAE']
-let $suppaedatasetlocation := $suppaedataset/def:leaf/@xlink:href
-let $suppaedoc := doc(concat($base,$suppaedatasetlocation))
-(: we need the OIDs of QNAM and QVAL and of USUBJID :)
+let $suppaedatasetlocation := (
+	if($defineversion='2.1') then $suppaedataset/def21:leaf/@xlink:href
+	else $suppaedataset/def:leaf/@xlink:href
+)
+let $suppaedoc := (
+	if($suppaedatasetlocation) then doc(concat($base,$suppaedatasetlocation))
+	else ()
+)
+(: we need the OIDs of QNAM and QVAL and of USUBJID (if any) :)
 let $suppaeusubjidoid := (
   for $a in $definedoc//odm:ItemDef[@Name='USUBJID']/@OID 
   where $a = $definedoc//odm:ItemGroupDef[@Name='SUPPAE']/odm:ItemRef/@ItemOID
@@ -59,7 +67,10 @@ let $idvarvaloid := (
 (: iterate over the AE datasets (for the case there is more than 1) :)
 for $dataset in $definedoc//odm:ItemGroupDef[@Domain='AE' or starts-with(@Name,'AE')]
     let $name := $dataset/@Name
-    let $datasetname := $dataset/def:leaf/@xlink:href
+	let $datasetname := (
+		if($defineversion='2.1') then $dataset/def21:leaf/@xlink:href
+		else $dataset/def:leaf/@xlink:href
+	)
     let $datasetlocation := concat($base,$datasetname)
     (: get the OIDs of AESEQ and USUBJID :)
     let $usubjidoid := (
@@ -91,6 +102,6 @@ for $dataset in $definedoc//odm:ItemGroupDef[@Domain='AE' or starts-with(@Name,'
         (: when AESMIE='Y' then a record must present in SUPPAE where SUPPAE.QNAM=AESOSP :)
         let $suppaeaesosprecord := $suppaedoc//odm:ItemGroupData[odm:ItemData[@ItemOID=$suppaeusubjidoid]/@Value=$usubjid and odm:ItemData[@ItemOID=$idvaroid]/@Value='AESEQ' and odm:ItemData[@ItemOID=$idvaroid]/@Value=$aeseq and  odm:ItemData[@ItemOID=$qnamoid]/@Value='AESOSP']
        	where $aesmievalue='Y' and not($suppaeaesosprecord)
-        return <error rule="CG0043" dataset="{data($name)}" variable="AESMIE" rulelastupdate="2020-06-11" recordnumber="{data($recnum)}">No SUPPAE record 'AESOSP' was found for the AE record with AESMIE='{data($aesmievalue)}'</error>			 	
+        return <error rule="CG0043" dataset="{data($name)}" variable="AESMIE" rulelastupdate="2020-08-04" recordnumber="{data($recnum)}">No SUPPAE record 'AESOSP' was found for the AE record with AESMIE='{data($aesmievalue)}'</error>			 	
 	
 	

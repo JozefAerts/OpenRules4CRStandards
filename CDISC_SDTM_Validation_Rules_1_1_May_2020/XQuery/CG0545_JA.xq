@@ -14,6 +14,7 @@ See the License for the specific language governing permissions and limitations 
 (: Rule CG0545: SM: When MIDSTYPE = TM.MIDSTYPE and TM.TMRPT = 'N', 
 	then MIDSTYPE is unique per subject :)
 declare namespace def = "http://www.cdisc.org/ns/def/v2.0";
+declare namespace def21 = "http://www.cdisc.org/ns/def/v2.1";
 declare namespace odm="http://www.cdisc.org/ns/odm/v1.3";
 declare namespace data="http://www.cdisc.org/ns/Dataset-XML/v1.0";
 declare namespace xlink="http://www.w3.org/1999/xlink";
@@ -27,6 +28,7 @@ declare function functx:is-value-in-sequence
 (: "declare variable ... external" allows to pass $base and $define from an external programm :)
 declare variable $base external; 
 declare variable $define external; 
+declare variable $defineversion external;
 (: let $base := 'LZZT_SDTM_Dataset-XML/' :)
 (: let $define := 'define_2_0.xml' :)
 let $definedoc := doc(concat($base,$define))
@@ -65,7 +67,10 @@ for $smitemgroupdef in $definedoc//odm:ItemGroupDef[@Name='SM']
         return $a
     )
     (: get the SM dataset location and the document itself :)
-    let $smdatasetlocation := $smitemgroupdef/def:leaf/@xlink:href
+	let $smdatasetlocation := (
+		if($defineversion='2.1') then $smitemgroupdef/def21:leaf/@xlink:href
+		else $smitemgroupdef/def:leaf/@xlink:href
+	)
     let $smdoc := (
     	if($smdatasetlocation) then doc(concat($base,$smdatasetlocation))
         else ()
@@ -91,6 +96,6 @@ for $smitemgroupdef in $definedoc//odm:ItemGroupDef[@Name='SM']
         (: return an error when MIDSTYPE is one of TM.MIDTYPE with TMRPT='N' 
         AND the number of records > 1 :)
         where functx:is-value-in-sequence($smmidstypevalue,$tmmidstypevalues) and $count > 1
-        return <error rule="CG0545" dataset="{data($name)}" rulelastupdate="2020-06-22">More than 1 MIDSTYPE='{data($smmidstypevalue)}' record was found for subject with USUBJID='{data($usubjidvalue)}' although the MIDSTYPE was declared as non-repeating in TM</error>
+        return <error rule="CG0545" dataset="{data($name)}" rulelastupdate="2020-08-04">More than 1 MIDSTYPE='{data($smmidstypevalue)}' record was found for subject with USUBJID='{data($usubjidvalue)}' although the MIDSTYPE was declared as non-repeating in TM</error>
 	
 	

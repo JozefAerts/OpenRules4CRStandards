@@ -13,36 +13,45 @@ See the License for the specific language governing permissions and limitations 
 
 xquery version "3.0";
 declare namespace def = "http://www.cdisc.org/ns/def/v2.0";
+declare namespace def21 = "http://www.cdisc.org/ns/def/v2.1";
 declare namespace odm="http://www.cdisc.org/ns/odm/v1.3";
 declare namespace data="http://www.cdisc.org/ns/Dataset-XML/v1.0";
 declare namespace xlink="http://www.w3.org/1999/xlink";
 (: "declare variable ... external" allows to pass $base and $define from an external programm :)
 declare variable $base external;
 declare variable $define external; 
+declare variable $defineversion external;
 (: let $base := '/db/fda_submissions/cdisc01/' :)
 (: let $define := 'define2-0-0-example-sdtm.xml' :)
+let $definedoc := doc(concat($base,$define))
 (: Get the DM dataset :)
-for $dataset in doc(concat($base,$define))//odm:ItemGroupDef[@Name='DM']
-    let $datasetname := $dataset/def:leaf/@xlink:href
-    let $datasetlocation := concat($base,$datasetname)
+for $dataset in $definedoc//odm:ItemGroupDef[@Name='DM']
+	let $datasetname := (
+		if($defineversion='2.1') then $dataset/def21:leaf/@xlink:href
+		else $dataset/def:leaf/@xlink:href
+	)
+    let $datasetdoc := (
+		if($datasetname) then doc(concat($base,$datasetname))
+		else ()
+	)
     (: get the OID of the DTHFL and of DTHDTC :)
     let $dthfloid := (
-        for $a in doc(concat($base,$define))//odm:ItemDef[@Name='DTHFL']/@OID 
-        where $a = doc(concat($base,$define))//odm:ItemGroupDef[@Name='DM']/odm:ItemRef/@ItemOID
+        for $a in $definedoc//odm:ItemDef[@Name='DTHFL']/@OID 
+        where $a = $definedoc//odm:ItemGroupDef[@Name='DM']/odm:ItemRef/@ItemOID
         return $a
     )
     let $dhdtcoid := (
-        for $a in doc(concat($base,$define))//odm:ItemDef[@Name='DTHDTC']/@OID 
-        where $a = doc(concat($base,$define))//odm:ItemGroupDef[@Name='DM']/odm:ItemRef/@ItemOID
+        for $a in $definedoc//odm:ItemDef[@Name='DTHDTC']/@OID 
+        where $a = $definedoc//odm:ItemGroupDef[@Name='DM']/odm:ItemRef/@ItemOID
         return $a
     )
     (: iterate over all the records in the DM dataset that have DTHDTC populated :)
-    for $record in doc($datasetlocation)//odm:ItemGroupData[odm:ItemData[@ItemOID=$dhdtcoid]]
+    for $record in $datasetdoc//odm:ItemGroupData[odm:ItemData[@ItemOID=$dhdtcoid]]
         let $recnum := $record/@data:ItemGroupDataSeq
         (: get the value of DTHFL :)
         let $dthflvalue := $record/odm:ItemData[@ItemOID=$dthfloid]/@Value
         (: and check whether DTHFL=Y :)
         where not($dthflvalue='Y')
-        return <error rule="CG0435" dataset="DM" variable="DTHFL" rulelastupdate="2020-06-19" recordnumber="{data($recnum)}">DTHFL='{data($dthflvalue)}' instead of 'Y', although DTHDTC='{data($dthflvalue)}' is not null</error>	
+        return <error rule="CG0435" dataset="DM" variable="DTHFL" rulelastupdate="2020-08-04" recordnumber="{data($recnum)}">DTHFL='{data($dthflvalue)}' instead of 'Y', although DTHDTC='{data($dthflvalue)}' is not null</error>	
 		
 	

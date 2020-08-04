@@ -14,6 +14,7 @@ See the License for the specific language governing permissions and limitations 
 (: Rule CG0384: --HLGTCD = MedDRA high level term group code :)
 xquery version "3.0";
 declare namespace def = "http://www.cdisc.org/ns/def/v2.0";
+declare namespace def21 = "http://www.cdisc.org/ns/def/v2.1";
 declare namespace odm="http://www.cdisc.org/ns/odm/v1.3";
 declare namespace data="http://www.cdisc.org/ns/Dataset-XML/v1.0";
 declare namespace xlink="http://www.w3.org/1999/xlink";
@@ -27,6 +28,7 @@ declare function functx:is-value-in-sequence
 } ;
 declare variable $base external; 
 declare variable $define external; 
+declare variable $defineversion external;
 (: the location of the MedDRA files (folder) need to be passed :)
 declare variable $meddrabase external;
 (: let $base := '/db/fda_submissions/cdisc01/' 
@@ -55,8 +57,14 @@ for $itemgroup in $definedoc//odm:ItemGroupDef[@Name='AE' or @Name='MH' or @Name
     (: and get the variable name :)
     let $hlgtcdname := $definedoc//odm:ItemDef[@OID=$hlgtcdoid]/@Name
     (: get the dataset location :)
-    let $datasetlocation := $itemgroup/def:leaf/@xlink:href
-    let $datasetdoc := doc(concat($base,$datasetlocation))
+	let $datasetlocation := (
+		if($defineversion='2.1') then $itemgroup/def21:leaf/@xlink:href
+		else $itemgroup/def:leaf/@xlink:href
+	)
+    let $datasetdoc := (
+		if($datasetlocation) then doc(concat($base,$datasetlocation))
+		else ()
+	)
     (: iterate over all the records in the dataset :)
     for $record in $datasetdoc//odm:ItemGroupData
         let $recnum := $record/@data:ItemGroupDataSeq
@@ -64,6 +72,6 @@ for $itemgroup in $definedoc//odm:ItemGroupDef[@Name='AE' or @Name='MH' or @Name
         let $hlgtcdvalue := $record/odm:ItemData[@ItemOID=$hlgtcdoid]/@Value
         (: give an error when the HLGTCD value is not one of the HLGT codes of MedDRA -  :)
         where $hlgtcdvalue and not(functx:is-value-in-sequence($hlgtcdvalue,$hlgtcodes))
-        return <error rule="CG0384" dataset="{data($name)}" variable="{data($hlgtcdname)}" recordnumber="{data($recnum)}" rulelastupdate="2020-06-18">Value '{data($hlgtcdvalue)}' for {data($hlgtcdname)} was not found in the MedDRA dictionary as a high level term</error>	
+        return <error rule="CG0384" dataset="{data($name)}" variable="{data($hlgtcdname)}" recordnumber="{data($recnum)}" rulelastupdate="2020-08-04">Value '{data($hlgtcdvalue)}' for {data($hlgtcdname)} was not found in the MedDRA dictionary as a high level term</error>	
 		
 	

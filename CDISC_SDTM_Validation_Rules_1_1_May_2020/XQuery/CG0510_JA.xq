@@ -13,12 +13,14 @@ See the License for the specific language governing permissions and limitations 
 
 (: Rule CG0510: --NOMDY not present in dataset :)
 declare namespace def = "http://www.cdisc.org/ns/def/v2.0";
+declare namespace def21 = "http://www.cdisc.org/ns/def/v2.1";
 declare namespace odm="http://www.cdisc.org/ns/odm/v1.3";
 declare namespace data="http://www.cdisc.org/ns/Dataset-XML/v1.0";
 declare namespace xlink="http://www.w3.org/1999/xlink";
 (: "declare variable ... external" allows to pass $base and $define from an external programm :)
 declare variable $base external; 
 declare variable $define external; 
+declare variable $defineversion external;
 (: let $base := 'LZZT_SDTM_Dataset-XML/'  :)
 (: let $define := 'define_2_0.xml' :)
 let $definedoc := doc(concat($base,$define))
@@ -35,6 +37,6 @@ for $datasetdef in $definedoc//odm:ItemGroupDef
     let $nomdyname := $definedoc//odm:ItemDef[@OID=$nomdyoid]/@Name
    (: return an error when --NOMDY is present :)
  	where $nomdyoid
-    	return <error rule="CG0510" dataset="{data($name)}" rulelastupdate="2020-06-19">Variable {data($nomdyname)} is not allowed to be used in SDTM submissions</error>	
+    	return <error rule="CG0510" dataset="{data($name)}" rulelastupdate="2020-08-04">Variable {data($nomdyname)} is not allowed to be used in SDTM submissions</error>	
 	
 	

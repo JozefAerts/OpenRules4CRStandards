@@ -15,19 +15,24 @@ See the License for the specific language governing permissions and limitations 
 (: We can only check that when ACTARM in ('Screen Failure' 'Not Assigned' 'Not  Treated') then RFENDTC = null :)
 xquery version "3.0";
 declare namespace def = "http://www.cdisc.org/ns/def/v2.0";
+declare namespace def21 = "http://www.cdisc.org/ns/def/v2.1";
 declare namespace odm="http://www.cdisc.org/ns/odm/v1.3";
 declare namespace data="http://www.cdisc.org/ns/Dataset-XML/v1.0";
 declare namespace xlink="http://www.w3.org/1999/xlink";
 (: "declare variable ... external" allows to pass $base and $define from an external programm :)
 declare variable $base external; 
 declare variable $define external; 
+declare variable $defineversion external;
 (: let $base := '/db/fda_submissions/cdiscpilot01/' :)
 (: let $define := 'define_2_0.xml' :)
 let $definedoc := doc(concat($base,$define))
 (: Get the DM dataset :)
 let $dmitemgroupdef := $definedoc//odm:ItemGroupDef[@Name='DM']
 (: and the location of the DM dataset :)
-let $dmdatasetlocation := $dmitemgroupdef/def:leaf/@xlink:href
+let $dmdatasetlocation := (
+	if($defineversion='2.1') then $dmitemgroupdef/def21:leaf/@xlink:href
+	else $dmitemgroupdef/def:leaf/@xlink:href
+)
 let $dmdatasetdoc := doc(concat($base,$dmdatasetlocation))
 (: get the OID of ACTARM and of RFENDTC :)
 let $actarmoid := (
@@ -48,6 +53,6 @@ for $record in $dmdatasetdoc//odm:ItemGroupData
     let $rfendtcvalue := $record/odm:ItemData[@ItemOID=$rfendtcoid]/@Value
     (: when ACTARM in ('Screen Failure' 'Not Assigned' 'Not  Treated') then RFENDTC = null :)
     where ($actarmvalue='Screen Failure' or $actarmvalue='Not Assigned' or $actarmvalue='Not  Treated') and $rfendtcvalue
-    return <error rule="CG0141" variable="RFENDTC" dataset="DM" rulelastupdate="2020-06-14" recordnumber="{data($recnum)}">RFENDTC='{data($rfendtcvalue)}' expected to be null for ACTARM='{data($actarmvalue)}'</error>			
+    return <error rule="CG0141" variable="RFENDTC" dataset="DM" rulelastupdate="2020-08-04" recordnumber="{data($recnum)}">RFENDTC='{data($rfendtcvalue)}' expected to be null for ACTARM='{data($actarmvalue)}'</error>			
 		
 	

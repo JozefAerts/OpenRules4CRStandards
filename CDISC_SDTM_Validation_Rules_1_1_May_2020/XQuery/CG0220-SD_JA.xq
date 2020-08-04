@@ -16,18 +16,23 @@ Study Day of Start (--STDY) variable value should be populated as defined by CDI
 :)
 xquery version "3.0";
 declare namespace def = "http://www.cdisc.org/ns/def/v2.0";
+declare namespace def21 = "http://www.cdisc.org/ns/def/v2.1";
 declare namespace odm="http://www.cdisc.org/ns/odm/v1.3";
 declare namespace data="http://www.cdisc.org/ns/Dataset-XML/v1.0";
 declare namespace xlink="http://www.w3.org/1999/xlink";
 (: "declare variable ... external" allows to pass $base and $define from an external programm :)
 declare variable $base external;
 declare variable $define external; 
+declare variable $defineversion external;
 declare variable $datasetname external;
 (: let $base := '/db/fda_submissions/cdisc01/' :)
 (: let $define := 'define2-0-0-example-sdtm.xml' :)
 let $definedoc := doc(concat($base,$define))
 (: Get the location of the DM dataset :)
-let $dmdataset := doc(concat($base,$define))//odm:ItemGroupDef[@Name='DM']/def:leaf/@xlink:href
+let $dmdataset := (
+	if($defineversion='2.1') then $definedoc//odm:ItemGroupDef[@Name='DM']/def21:leaf/@xlink:href
+	else $definedoc//odm:ItemGroupDef[@Name='DM']/def:leaf/@xlink:href
+)
 let $dmdatasetlocation := concat($base,$dmdataset)
 (: get the OID of the RFSTDTC variable :)
 let $rfstdtcoid := (
@@ -42,9 +47,12 @@ let $dmusubjidoid := (
         return $a  
 )
 (: iterate over all other datasets :)
-for $datasetdef in doc(concat($base,$define))//odm:ItemGroupDef[not(@Name='DM')][@Name=$datasetname]
+for $datasetdef in $definedoc//odm:ItemGroupDef[not(@Name='DM')][@Name=$datasetname]
     let $name := $datasetdef/@Name
-    let $dsname := $datasetdef/def:leaf/@xlink:href
+	let $dsname := (
+		if($defineversion='2.1') then $datasetdef/def21:leaf/@xlink:href
+		else $datasetdef/def:leaf/@xlink:href
+	)
     let $datasetlocation := concat($base,$dsname)
     (: Get the OIDs of the --DY and --DTC variables  :)
     let $stdyoid := (
@@ -103,6 +111,6 @@ for $datasetdef in doc(concat($base,$define))//odm:ItemGroupDef[not(@Name='DM')]
         )
         (: before comparing, also check whether the submitted value is really an integer :)
         where $stdyvalue castable as xs:integer and $stdycalculatedfda and $stdyvalue and not($stdycalculatedfda = $stdyvalue)
-        return <error dataset="{data($name)}" variable="{data($stdyname)}" rule="CG0220" rulelastupdate="2020-06-15" recordnumber="{data($recnum)}">Invalid value for {data($stdyname)}, calculated value={data($stdycalculatedfda)}, observed value={data($stdyvalue)}, in dataset {data($name)} </error>		
+        return <error dataset="{data($name)}" variable="{data($stdyname)}" rule="CG0220" rulelastupdate="2020-08-04" recordnumber="{data($recnum)}">Invalid value for {data($stdyname)}, calculated value={data($stdycalculatedfda)}, observed value={data($stdyvalue)}, in dataset {data($name)} </error>		
 		
 	

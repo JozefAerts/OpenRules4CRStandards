@@ -14,12 +14,14 @@ See the License for the specific language governing permissions and limitations 
 (: Rule CG0398 - When DSCAT = 'DISPOSITION EVENT' and DSTERM != 'COMPLETED' then at most one record per subject per epoch :)
 xquery version "3.0";
 declare namespace def = "http://www.cdisc.org/ns/def/v2.0";
+declare namespace def21 = "http://www.cdisc.org/ns/def/v2.1";
 declare namespace odm="http://www.cdisc.org/ns/odm/v1.3";
 declare namespace data="http://www.cdisc.org/ns/Dataset-XML/v1.0";
 declare namespace xlink="http://www.w3.org/1999/xlink";
 declare namespace xs="http://www.w3.org/2001/XMLSchema";
 declare variable $base external;
 declare variable $define external; 
+declare variable $defineversion external;
 (: let $base := '/db/fda_submissions/cdisc01/' :)
 (: let $define := 'define2-0-0-example-sdtm.xml' :)
 (: let $base := '/db/fda_submissions/cdiscpilot01/' :)
@@ -49,8 +51,14 @@ let $dsitemgroupdef := $definedoc//odm:ItemGroupDef[@Name='DS']
         return $a
     )
     (: get the dataset location and the document :)
-    let $dsdatasetlocation := $dsitemgroupdef/def:leaf/@xlink:href
-    let $dsdatsetdoc := doc(concat($base,$dsdatasetlocation))
+	let $dsdatasetlocation := (
+		if($defineversion='2.1') then $dsitemgroupdef/def21:leaf/@xlink:href
+		else $dsitemgroupdef/def:leaf/@xlink:href
+	)
+    let $dsdatsetdoc := (
+		if($dsdatasetlocation) then doc(concat($base,$dsdatasetlocation))
+		else ()
+	)
     (: get (filter) all records for which 'DISPOSITION EVENT' and DSTERM != 'COMPLETED' :)
     let $completedrecords := $dsdatsetdoc//odm:ItemGroupData[odm:ItemData[@ItemOID=$dscatoid and @Value='DISPOSITION EVENT'] and odm:ItemData[@ItemOID=$dstermoid and @Value='COMPLETED']]
     (: group the records by EPOCH and USUBJID - each group should contain no more than 1 records :)
@@ -72,6 +80,6 @@ let $dsitemgroupdef := $definedoc//odm:ItemGroupDef[@Name='DS']
         let $usubjid := $group/odm:ItemGroupData[1]/odm:ItemData[@ItemOID=$usubjidoid]/@Value
         let $epoch := $group/odm:ItemGroupData[1]/odm:ItemData[@ItemOID=$epochoid]/@Value
         where $count > 1
-        return <error rule="CG0398" dataset="DS" recordnumber="{data($recnum)}" rulelastupdate="2020-06-18">For DSCAT = 'DISPOSITION EVENT' and DSTERM = 'COMPLETED', {data($count)} records were found for USUBJID='{data($usubjid)}' and EPOCH='{data($epoch)}'. Only 1 record is allowed.</error>						
+        return <error rule="CG0398" dataset="DS" recordnumber="{data($recnum)}" rulelastupdate="2020-08-04">For DSCAT = 'DISPOSITION EVENT' and DSTERM = 'COMPLETED', {data($count)} records were found for USUBJID='{data($usubjid)}' and EPOCH='{data($epoch)}'. Only 1 record is allowed.</error>						
 		
 	

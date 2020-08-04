@@ -14,12 +14,14 @@ See the License for the specific language governing permissions and limitations 
 (: Rule CG0108 - When EXTRTV = null then EXVAMTU = null :)
 xquery version "3.0";
 declare namespace def = "http://www.cdisc.org/ns/def/v2.0";
+declare namespace def21 = "http://www.cdisc.org/ns/def/v2.1";
 declare namespace odm="http://www.cdisc.org/ns/odm/v1.3";
 declare namespace data="http://www.cdisc.org/ns/Dataset-XML/v1.0";
 declare namespace xlink="http://www.w3.org/1999/xlink";
 (: "declare variable ... external" allows to pass $base and $define from an external programm :)
 declare variable $base external;
 declare variable $define external; 
+declare variable $defineversion external;
 (: let $base := '/db/fda_submissions/cdisc01/' :)
 (: let $define := 'define2-0-0-example-sdtm.xml' :)
 let $definedoc := doc(concat($base,$define))
@@ -39,7 +41,10 @@ for $itemgroupdef in $definedoc//odm:ItemGroupDef[@Domain='EX' or starts-with(@N
         return $a
     )
     (: get the dataset location and make it a document :)
-    let $datasetlocation := $itemgroupdef/def:leaf/@xlink:href
+	let $datasetlocation := (
+		if($defineversion='2.1') then $itemgroupdef/def21:leaf/@xlink:href
+		else $itemgroupdef/def:leaf/@xlink:href
+	)
     let $datasetdoc := doc(concat($base,$datasetlocation))
     (: iterate over all records in the dataset for which EXTRTV is null (i.e. absent in Dataset-XML) :)
     for $record in $datasetdoc//odm:ItemGroupData[not(odm:ItemData[@ItemOID=$extrtvoid])]
@@ -49,6 +54,6 @@ for $itemgroupdef in $definedoc//odm:ItemGroupDef[@Domain='EX' or starts-with(@N
         (: give an error when there is a EXVAMTU value :)
         where $exvamtu and $exvamtu!=''
         return
-        <error rule="CG0108" dataset="{data($name)}" variable="EXVAMTU" recordnumber="{data($recnum)}" rulelastupdate="2020-06-14">EXVAMTU={data($exvamtu)} but was expected to be null as EXTRTV is null</error>			
+        <error rule="CG0108" dataset="{data($name)}" variable="EXVAMTU" recordnumber="{data($recnum)}" rulelastupdate="2020-08-04">EXVAMTU={data($exvamtu)} but was expected to be null as EXTRTV is null</error>			
 		
 	

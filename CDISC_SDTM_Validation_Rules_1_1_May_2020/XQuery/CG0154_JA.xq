@@ -15,22 +15,27 @@ See the License for the specific language governing permissions and limitations 
 Applicable to SE, TA, TE :)
 xquery version "3.0";
 declare namespace def = "http://www.cdisc.org/ns/def/v2.0";
+declare namespace def21 = "http://www.cdisc.org/ns/def/v2.1";
 declare namespace odm="http://www.cdisc.org/ns/odm/v1.3";
 declare namespace data="http://www.cdisc.org/ns/Dataset-XML/v1.0";
 declare namespace xlink="http://www.w3.org/1999/xlink";
 (: "declare variable ... external" allows to pass $base and $define from an external programm :)
 declare variable $base external;
 declare variable $define external;
+declare variable $defineversion external;
 (: let $base := '/db/fda_submissions/cdisc01/' :)
 (: let $define := 'define2-0-0-example-sdtm.xml' :)
 let $definedoc := doc(concat($base,$define))
 (: Get the SE, TA and TE datasets:)
-let $datasets := doc(concat($base,$define))//odm:ItemGroupDef[@Name='SE' or @Name='TA' or @Name='TE']
+let $datasets := $definedoc//odm:ItemGroupDef[@Name='SE' or @Name='TA' or @Name='TE']
 (: and iterate over these :)
 for $datasetdef in $datasets
     (: get the dataset name and location :)
     let $name := $datasetdef/@Name
-    let $datasetname := $datasetdef/def:leaf/@xlink:href
+	let $datasetname := (
+		if($defineversion='2.1') then $datasetdef/def21:leaf/@xlink:href
+		else $datasetdef/def:leaf/@xlink:href
+	)
     let $datasetlocation := concat($base,$datasetname)
     (: get the OIDs of ETCD and ELEMENT :)
     let $etcdoid := (
@@ -57,6 +62,6 @@ for $datasetdef in $datasets
             let $elementvalue2 := $record2/odm:ItemData[@ItemOID=$elementoid]/@Value
             (: ELEMENT must be equal to ELEMENT of the the earlier record :)
             where not($elementvalue=$elementvalue2)
-            return <error rule="CG0154" dataset="{data($name)}" variable="ETCD" rulelastupdate="2020-06-14" recordnumber="{data($recnum2)}">Non-unique combination for ELEMENT and ETCD. Record {data($recnum)} has ETCD='{data($etcdvalue)}' and and ELEMENT='{data($elementvalue)}' whereas record {data($recnum2)} has ETCD='{data($etcdvalue2)}' and has ELEMENT='{data($elementvalue2)}' in dataset {data($name)}</error>			
+            return <error rule="CG0154" dataset="{data($name)}" variable="ETCD" rulelastupdate="2020-08-04" recordnumber="{data($recnum2)}">Non-unique combination for ELEMENT and ETCD. Record {data($recnum)} has ETCD='{data($etcdvalue)}' and and ELEMENT='{data($elementvalue)}' whereas record {data($recnum2)} has ETCD='{data($etcdvalue2)}' and has ELEMENT='{data($elementvalue2)}' in dataset {data($name)}</error>			
 		
 	

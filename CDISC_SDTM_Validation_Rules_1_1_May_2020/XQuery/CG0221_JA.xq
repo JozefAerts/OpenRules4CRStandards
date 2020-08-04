@@ -14,19 +14,24 @@ See the License for the specific language governing permissions and limitations 
 (: Rule CG0221 - When --STDTC or DM.RFSTDTC does not contain complete values in their date portion then --STDY = null :)
 xquery version "3.0";
 declare namespace def = "http://www.cdisc.org/ns/def/v2.0";
+declare namespace def21 = "http://www.cdisc.org/ns/def/v2.1";
 declare namespace odm="http://www.cdisc.org/ns/odm/v1.3";
 declare namespace data="http://www.cdisc.org/ns/Dataset-XML/v1.0";
 declare namespace xlink="http://www.w3.org/1999/xlink"; 
 (: "declare variable ... external" allows to pass $base and $define from an external programm :)
 declare variable $base external;
 declare variable $define external; 
-declare variable $domain external;
+declare variable $defineversion external;
+(: declare variable $domain external; :)
 (: let $base := '/db/fda_submissions/cdisc01/' :)
 (: let $define := 'define2-0-0-example-sdtm.xml' :)
 let $definedoc := doc(concat($base,$define))
 
 (: get the location of the DM dataset :)
-let $dmdatasetname := $definedoc//odm:ItemGroupDef[@Name='DM']/def:leaf/@xlink:href
+let $dmdatasetname := (
+	if($defineversion='2.1') then $definedoc//odm:ItemGroupDef[@Name='DM']/def21:leaf/@xlink:href
+	else $definedoc//odm:ItemGroupDef[@Name='DM']/def:leaf/@xlink:href
+)
 let $dmdatasetlocation := concat($base,$dmdatasetname)
 let $dmdatasetdoc := doc($dmdatasetlocation)
 (: and the OIDs of the USUBJID and RFSTDTC variables :)
@@ -43,7 +48,10 @@ let $rfstdtcoid := (
 (: iterate over all datasets :)
 for $datasetdef in $definedoc//odm:ItemGroupDef[not(@Name='DM')]
     let $name := $datasetdef/@Name
-    let $datasetname := $datasetdef/def:leaf/@xlink:href
+	let $datasetname := (
+		if($defineversion='2.1') then $datasetdef/def21:leaf/@xlink:href
+		else $datasetdef/def:leaf/@xlink:href
+	)
     let $datasetlocation := concat($base,$datasetname)
     let $datasetdoc := doc($datasetlocation)
     (: Get the OIDs of the SDTY and STDTC variable :)
@@ -81,6 +89,6 @@ for $datasetdef in $definedoc//odm:ItemGroupDef[not(@Name='DM')]
         let $stdyvalue := $record/odm:ItemData[@ItemOID=$stdyoid]/@Value
         (: STDY may NOT be populated when of RFSTDTC or STDTC is an incomplete date :)
         where $stdyoid and (not($iscompletestdtcdate) or not($iscompleterfstdtcdate)) and $stdyvalue
-        return <error rule="CG0221" dataset="{data($name)}" variable="{data($stdyname)}" rulelastupdate="2020-06-15" recordnumber="{data($recnum)}">{data($stdyname)} variable value {data($stdyvalue)} is not null although one of {data($stdtcname)} (value={data($stdtcvalue)}) or RFSTDTC (value={data($rfstdtcvalue)}) is not a  complete date</error>				
+        return <error rule="CG0221" dataset="{data($name)}" variable="{data($stdyname)}" rulelastupdate="2020-08-04" recordnumber="{data($recnum)}">{data($stdyname)} variable value {data($stdyvalue)} is not null although one of {data($stdtcname)} (value={data($stdtcvalue)}) or RFSTDTC (value={data($rfstdtcvalue)}) is not a  complete date</error>				
 		
 	

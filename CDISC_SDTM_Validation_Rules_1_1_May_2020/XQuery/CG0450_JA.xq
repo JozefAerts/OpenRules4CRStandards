@@ -16,6 +16,7 @@ See the License for the specific language governing permissions and limitations 
  e.g.: http://dailymed.nlm.nih.gov/dailymed/services/v2/uniis.xml?active_moiety=NAFARELIN :)
 xquery version "3.0";
 declare namespace def = "http://www.cdisc.org/ns/def/v2.0";
+declare namespace def21 = "http://www.cdisc.org/ns/def/v2.1";
 declare namespace odm="http://www.cdisc.org/ns/odm/v1.3";
 declare namespace data="http://www.cdisc.org/ns/Dataset-XML/v1.0";
 declare namespace xlink="http://www.w3.org/1999/xlink";
@@ -23,27 +24,34 @@ declare namespace xs="http://www.w3.org/2001/XMLSchema";
 (: "declare variable ... external" allows to pass $base and $define from an external programm :)
 declare variable $base external;
 declare variable $define external;
+declare variable $defineversion external;
 (: let $base := '/db/fda_submissions/cdiscpilot01/' :)
 (: let $define := 'define_2_0.xml' :)
-
+let $definedoc := doc(concat($base,$define))
 (: Get the TS dataset :)
-let $tsitemgroupdef := doc(concat($base,$define))//odm:ItemGroupDef[@Name='TS']
-let $tsdatasetname := $tsitemgroupdef/def:leaf/@xlink:href
-let $tsdataset := doc(concat($base,$tsdatasetname))
+let $tsitemgroupdef := $definedoc//odm:ItemGroupDef[@Name='TS']
+let $tsdatasetname := (
+	if($defineversion='2.1') then $tsitemgroupdef/def21:leaf/@xlink:href
+	else $tsitemgroupdef/def:leaf/@xlink:href
+)
+let $tsdatasetdoc := (
+	if($tsdatasetname) then doc(concat($base,$tsdatasetname))
+	else ()
+)
 (: get the OID of the TSPARMCD variable :)
 let $tsparmcdoid := (
-    for $a in doc(concat($base,$define))//odm:ItemDef[@Name='TSPARMCD']/@OID 
-    where $a = doc(concat($base,$define))//odm:ItemGroupDef[@Name='TS']/odm:ItemRef/@ItemOID
+    for $a in $definedoc//odm:ItemDef[@Name='TSPARMCD']/@OID 
+    where $a = $definedoc//odm:ItemGroupDef[@Name='TS']/odm:ItemRef/@ItemOID
     return $a
 )
 (: get the OID of the TSVAL variable :)
 let $tsvaloid := (
-    for $a in doc(concat($base,$define))//odm:ItemDef[@Name='TSVAL']/@OID 
-    where $a = doc(concat($base,$define))//odm:ItemGroupDef[@Name='TS']/odm:ItemRef/@ItemOID
+    for $a in $definedoc//odm:ItemDef[@Name='TSVAL']/@OID 
+    where $a = $definedoc//odm:ItemGroupDef[@Name='TS']/odm:ItemRef/@ItemOID
     return $a
 )
 (: now get the records TSPARMCD=TRT, but only when there also IS a TSVALCD variable value present :)
-for $record in $tsdataset//odm:ItemGroupData[odm:ItemData[@ItemOID=$tsparmcdoid and @Value='TRT'] and odm:ItemData[@ItemOID=$tsvaloid]]
+for $record in $tsdatasetdoc//odm:ItemGroupData[odm:ItemData[@ItemOID=$tsparmcdoid and @Value='TRT'] and odm:ItemData[@ItemOID=$tsvaloid]]
     let $recnum := $record/@data:ItemGroupDataSeq
     (: get the ItemData point for TSVAL :)
     (: REMARK that we are forgiving regarding case-sensitiveness :)
@@ -60,6 +68,6 @@ for $record in $tsdataset//odm:ItemGroupData[odm:ItemData[@ItemOID=$tsparmcdoid 
     (: this is a document with the structure /uniis/unii/unii_code - it is an invalid code when there is no such an unii element :)
     let $count := count($webserviceresult/uniis/unii/unii_code)
     where $count = 0
-    return <error rule="CG0450" dataset="TS" variable="TSVAL" rulelastupdate="2020-06-19" recordnumber="{data($recnum)}">Invalid TSVAL value for TRT in dataset {data($tsdatasetname)}: TSVAL='{data($tsval)}' for TRT record must be a valid preferred term from FDA Substance Registration System (SRS): value '{data($tsval)}' is not a valid preferred term identifier from SRS</error>  			
+    return <error rule="CG0450" dataset="TS" variable="TSVAL" rulelastupdate="2020-08-04" recordnumber="{data($recnum)}">Invalid TSVAL value for TRT in dataset {data($tsdatasetname)}: TSVAL='{data($tsval)}' for TRT record must be a valid preferred term from FDA Substance Registration System (SRS): value '{data($tsval)}' is not a valid preferred term identifier from SRS</error>  			
 		
 	

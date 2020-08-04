@@ -14,12 +14,14 @@ See the License for the specific language governing permissions and limitations 
 (: QLABEL value length <= 40 :)
 xquery version "3.0";
 declare namespace def = "http://www.cdisc.org/ns/def/v2.0";
+declare namespace def21 = "http://www.cdisc.org/ns/def/v2.1";
 declare namespace odm="http://www.cdisc.org/ns/odm/v1.3";
 declare namespace data="http://www.cdisc.org/ns/Dataset-XML/v1.0";
 declare namespace xlink="http://www.w3.org/1999/xlink";
 (: "declare variable ... external" allows to pass $base and $define from an external programm :)
 declare variable $base external;
 declare variable $define external;
+declare variable $defineversion external;
 (: let $base := '/db/fda_submissions/cdiscpilot01/' :)
 (: let $define := 'define_2_0.xml' :)
 let $definedoc := doc(concat($base,$define))
@@ -33,8 +35,14 @@ for $itemgroupdef in $definedoc//odm:ItemGroupDef[starts-with(@Name,'SUPP')]
         return $a
     )
     (: get the dataset location and document :)
-    let $datasetlocation := $itemgroupdef/def:leaf/@xlink:href
-    let $datasetdoc := doc(concat($base,$datasetlocation))
+	let $datasetlocation := (
+		if($defineversion='2.1') then $itemgroupdef/def21:leaf/@xlink:href
+		else $itemgroupdef/def:leaf/@xlink:href
+	)
+    let $datasetdoc := (
+		if($datasetlocation) then doc(concat($base,$datasetlocation))
+		else ()
+	)
     (: iterate over all records in the dataset - QLABEL is a required variable :)
     for $record in $datasetdoc//odm:ItemGroupData
         let $recnum := $record/@data:ItemGroupDataSeq
@@ -42,6 +50,6 @@ for $itemgroupdef in $definedoc//odm:ItemGroupDef[starts-with(@Name,'SUPP')]
         let $qlabel := $record/odm:ItemData[@ItemOID=$qlabeloid]/@Value
         (: QLABEL may not be more than 40 characters :)
         where string-length($qlabel) > 40
-        return <error rule="CG0416" dataset="{data($name)}" variable="QLABEL" rulelastupdate="2017-03-22" recordnumber="{data($recnum)}">Value of QLABEL='{data($qlabel)}' has more than 40 characters</error>														
+        return <error rule="CG0416" dataset="{data($name)}" variable="QLABEL" rulelastupdate="2020-08-04" recordnumber="{data($recnum)}">Value of QLABEL='{data($qlabel)}' has more than 40 characters</error>														
 		
 	

@@ -14,12 +14,14 @@ See the License for the specific language governing permissions and limitations 
 (: Rule CG0016: When Variable Core Status = Expected then Variable present in dataset  :)
 xquery version "3.0";
 declare namespace def = "http://www.cdisc.org/ns/def/v2.0";
+declare namespace def21 = "http://www.cdisc.org/ns/def/v2.1";
 declare namespace odm="http://www.cdisc.org/ns/odm/v1.3";
 declare namespace data="http://www.cdisc.org/ns/Dataset-XML/v1.0";
 declare namespace xlink="http://www.w3.org/1999/xlink"; 
 (: "declare variable ... external" allows to pass $base and $define from an external programm :)
 declare variable $base external;
 declare variable $define external; 
+declare variable $defineversion external;
 declare variable $username external;
 declare variable $password external; 
 (: let $base := 'LZZT_SDTM_Dataset-XML/' :)
@@ -30,16 +32,25 @@ let $cdisclibrarybase := 'https://library.cdisc.org/api/mdr'
 (: the define.xml document :)
 let $definedoc := doc(concat($base,$define))
 (: get the SDTM-IG version, we need to match it to the SDTM (model) version :)
-let $sdtmigversiondefine := $definedoc//odm:MetaDataVersion/@def:StandardVersion
+let $sdtmigversiondefine := (
+	if($defineversion='2.1') then $definedoc//odm:MetaDataVersion/def21:Standards/def21:Standard[@Name='SDTMIG'][1]/@Version
+	else $definedoc//odm:MetaDataVersion/@def:StandardVersion
+)
 (: we need to translate the SDTM-IG version in what the CDISC library understands :)
 let $sdtmigversion := translate($sdtmigversiondefine,'.','-')
 (: iterate over all datasets except that belong to "General Observation" class :)
-for $dataset in doc(concat($base,$define))//odm:ItemGroupDef
+for $dataset in $definedoc//odm:ItemGroupDef
     let $name := $dataset/@Name
-    let $datasetname := $dataset/def:leaf/@xlink:href
+	let $datasetname := (
+		if($defineversion='2.1') then $dataset/def21:leaf/@xlink:href
+		else $dataset/def:leaf/@xlink:href
+	)
     let $datasetlocation := concat($base,$datasetname)
     let $domain := $dataset/@Domain
-    let $defclass := $dataset/@def:Class
+    let $defclass := (
+		if($defineversion = '2.1') then $dataset/def21:Class/@Name
+		else $dataset/@def:Class
+	)
     (: Unfortunately, the way of writing the class name (casing)
     has not always been consistent within CDISC :)
     let $class := (
@@ -74,6 +85,6 @@ for $dataset in doc(concat($base,$define))//odm:ItemGroupDef
         )
         (: When not, give an error :)
         where not($itemoid) 
-        return <error rule="CG0016" dataset="{$name}" variable="{$expectedvarname}" rulelastupdate="2020-06-11">Expected SDTM variable {data($expectedvarname)} is not found</error>
+        return <error rule="CG0016" dataset="{$name}" variable="{$expectedvarname}" rulelastupdate="2020-08-04">Expected SDTM variable {data($expectedvarname)} is not found</error>
 	
 	

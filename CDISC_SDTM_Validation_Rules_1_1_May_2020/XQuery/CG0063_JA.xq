@@ -15,19 +15,24 @@ See the License for the specific language governing permissions and limitations 
  then EPOCH != null :)
 xquery version "3.0";
 declare namespace def = "http://www.cdisc.org/ns/def/v2.0";
+declare namespace def21 = "http://www.cdisc.org/ns/def/v2.1";
 declare namespace odm="http://www.cdisc.org/ns/odm/v1.3";
 declare namespace data="http://www.cdisc.org/ns/Dataset-XML/v1.0";
 declare namespace xlink="http://www.w3.org/1999/xlink";
 (: "declare variable ... external" allows to pass $base and $define from an external programm :)
 declare variable $base external; 
 declare variable $define external; 
+declare variable $defineversion external;
 (: let $base := '/db/fda_submissions/cdisc01/' :)
 (: let $define := 'define2-0-0-example-sdtm.xml' :)
 let $definedoc := doc(concat($base,$define))
 (: Get the DS dataset :)
 let $dsitemgroupdef := $definedoc//odm:ItemGroupDef[@Name='DS']
 (: and the location of the dataset :)
-let $dsdatasetlocation := $dsitemgroupdef/def:leaf/@xlink:href
+let $dsdatasetlocation := (
+	if($defineversion='2.1') then $dsitemgroupdef/def21:leaf/@xlink:href
+	else $dsitemgroupdef/def:leaf/@xlink:href
+)
 let $dsdatasetdoc := doc(concat($base,$dsdatasetlocation))
 (: get the OID of the EPOCH variable in DS :)
 let $dsepochoid := (
@@ -66,6 +71,6 @@ for $group in $orderedrecords
             let $recnum := $record/@data:ItemGroupDataSeq
             (: each such a record must have an EPOCH variable :)
             where not($record/odm:ItemData[@ItemOID=$dsepochoid]/@Value)
-            return <error rule="CG0063" variable="EPOCH" dataset="DS" rulelastupdate="2020-06-11" recordnumber="{data($recnum)}">EPOCH is missing for multiple DSCAT='DISPOSITION EVENT' occurrence for subject {data($usubjid)}</error>			
+            return <error rule="CG0063" variable="EPOCH" dataset="DS" rulelastupdate="2020-08-04" recordnumber="{data($recnum)}">EPOCH is missing for multiple DSCAT='DISPOSITION EVENT' occurrence for subject {data($usubjid)}</error>			
 		
 	

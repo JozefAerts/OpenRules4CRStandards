@@ -15,19 +15,24 @@ See the License for the specific language governing permissions and limitations 
 NOT applicable to SDTM-IG 3.3, there is a separate rule for this :)
 xquery version "3.0";
 declare namespace def = "http://www.cdisc.org/ns/def/v2.0";
+declare namespace def21 = "http://www.cdisc.org/ns/def/v2.1";
 declare namespace odm="http://www.cdisc.org/ns/odm/v1.3";
 declare namespace data="http://www.cdisc.org/ns/Dataset-XML/v1.0";
 declare namespace xlink="http://www.w3.org/1999/xlink";
 (: "declare variable ... external" allows to pass $base and $define from an external programm :)
 declare variable $base external;
 declare variable $define external; 
+declare variable $defineversion external;
 (: let $base := '/db/fda_submissions/cdiscpilot01/' :)
 (: let $define := 'define_2_0.xml' :)
 let $definedoc := doc(concat($base,$define))
 (: iterate over the TA and TV datasets :)
-for $datasetdef in doc(concat($base,$define))//odm:ItemGroupDef[@Name='TA' or @Name='TV']
+for $datasetdef in $definedoc//odm:ItemGroupDef[@Name='TA' or @Name='TV']
     let $name := $datasetdef/@Name
-    let $datasetname := $datasetdef/def:leaf/@xlink:href
+	let $datasetname := (
+		if($defineversion='2.1') then $datasetdef/def21:leaf/@xlink:href
+		else $datasetdef/def:leaf/@xlink:href
+	)
     let $datasetdoc:= doc(concat($base,$datasetname))
     (: get the OID of ARM (planned arm name) :)
     let $armoid := (
@@ -43,6 +48,6 @@ for $datasetdef in doc(concat($base,$define))//odm:ItemGroupDef[@Name='TA' or @N
         (: ARM not in ('Screen Failure', 'Not Assigned', 'Unplanned Treatment', 'Not Treated') :)
         (: give an error when ARM has one of the above values :)
         where $arm='Screen Failure' or $arm='Not Assigned' or $arm='Unplanned Treatment' or $arm='Not Treated'
-        return <error rule="CG0244" dataset="{data($name)}" variable="ARM" recordnumber="{data($recnum)}" rulelastupdate="2020-06-15">Value for planned ARM='{data($arm)}' is not allowed in dataset {data($name)}</error>			
+        return <error rule="CG0244" dataset="{data($name)}" variable="ARM" recordnumber="{data($recnum)}" rulelastupdate="2020-08-04">Value for planned ARM='{data($arm)}' is not allowed in dataset {data($name)}</error>			
 		
 	

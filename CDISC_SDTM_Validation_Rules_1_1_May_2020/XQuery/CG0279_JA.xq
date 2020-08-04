@@ -16,6 +16,7 @@ See the License for the specific language governing permissions and limitations 
 (: TODO: how do we know that "Pharmacological Class of  Interventional Therapy is applicable"? :)
 xquery version "3.0";
 declare namespace def = "http://www.cdisc.org/ns/def/v2.0";
+declare namespace def21 = "http://www.cdisc.org/ns/def/v2.1";
 declare namespace odm="http://www.cdisc.org/ns/odm/v1.3";
 declare namespace data="http://www.cdisc.org/ns/Dataset-XML/v1.0";
 declare namespace xlink="http://www.w3.org/1999/xlink";
@@ -24,6 +25,7 @@ declare namespace functx = "http://www.functx.com";
 (: "declare variable ... external" allows to pass $base and $define from an external programm :)
 declare variable $base external;
 declare variable $define external;
+declare variable $defineversion external;
 (: let $base := '/db/fda_submissions/cdisc01/' :)
 (: let $define := 'define2-0-0-example-sdtm.xml' :)
 let $definedoc := doc(concat($base,$define))
@@ -41,7 +43,10 @@ for $itemgroup in $definedoc//odm:ItemGroupDef[@Name='TS']
         return $a
     )
     (: get the dataset :)
-    let $datasetname := $itemgroup//def:leaf/@xlink:href
+	let $datasetname := (
+		if($defineversion='2.1') then $itemgroup//def21:leaf/@xlink:href
+		else $itemgroup//def:leaf/@xlink:href
+	)
     let $dataset := concat($base,$datasetname)
     let $datasetdoc := doc($dataset)
     (: look for a record with TSPARMCD='STYPE' and TSVAL='INTERVENTIONAL' :)
@@ -52,6 +57,6 @@ for $itemgroup in $definedoc//odm:ItemGroupDef[@Name='TS']
     let $trtvalue := $trtrecord/odm:ItemData[@ItemOID=$tsvaloid]/@Value
     (: TSVAL for TSPARMCD = 'PCLAS' must not be null :)
     where $interventionalrecord and (not($trtvalue))  (: give an error when TSVAL for TSPARMCD=INTTYPE is null  :)
-    return <error rule="CG0279" dataset="TS" variable="TSVAL" rulelastupdate="2020-06-15">Null value for TSVAL for TSPARMCD='PCLAS' found although a record with TSPARMCD='STYPE and TSVAL='INTERVENTIONAL' exists</error>			
+    return <error rule="CG0279" dataset="TS" variable="TSVAL" rulelastupdate="2020-08-04">Null value for TSVAL for TSPARMCD='PCLAS' found although a record with TSPARMCD='STYPE and TSVAL='INTERVENTIONAL' exists</error>			
 		
 	

@@ -20,6 +20,7 @@ but there is no way to find out that from SREL (Subject, Device, or Study Relati
 :)
 xquery version "3.0";
 declare namespace def = "http://www.cdisc.org/ns/def/v2.0";
+declare namespace def21 = "http://www.cdisc.org/ns/def/v2.1";
 declare namespace odm="http://www.cdisc.org/ns/odm/v1.3";
 declare namespace data="http://www.cdisc.org/ns/Dataset-XML/v1.0";
 declare namespace xlink="http://www.w3.org/1999/xlink";
@@ -32,6 +33,7 @@ declare function functx:is-value-in-sequence
 } ;
 declare variable $base external;
 declare variable $define external; 
+declare variable $defineversion external;
 (: let $base := 'LZZT_SDTM_Dataset-XML/' :)
 (: let $define := 'define_2_0.xml' :)
 let $definedoc := doc(concat($base,$define))
@@ -51,9 +53,15 @@ let $poolidoid := (
         return $a
 )
 (: and we need the DM and POOLDEF datasets themselves :)
-let $dmdatasetlocation := $dm/def:leaf/@xlink:href
+let $dmdatasetlocation := (
+	if($defineversion='2.1') then $dm/def21:leaf/@xlink:href
+	else $dm/def:leaf/@xlink:href
+)
 let $dmdatasetdoc := doc(concat($base,$dmdatasetlocation))
-let $pooldefdatasetlocation := $pooldef/def:leaf/@xlink:href
+let $pooldefdatasetlocation := (
+	if($defineversion='2.1') then $pooldef/def21:leaf/@xlink:href
+	else $pooldef/def:leaf/@xlink:href
+)
 let $pooldefdatasetdoc := (
 	if ($pooldefdatasetlocation) then doc(concat($base,$pooldefdatasetlocation))
     else ()
@@ -65,7 +73,10 @@ let $poolsetpoolidvalues := $pooldefdatasetdoc//odm:ItemGroupData/odm:ItemData[@
 for $itemgroupdef in $definedoc//odm:ItemGroupDef[starts-with(@Name,'AP') and not(@Name='APRELSUB')]
     let $name := $itemgroupdef/@Name
     (: get the dataset location :)
-    let $apdatasetlocation := $itemgroupdef/def:leaf/@xlink:href
+	let $apdatasetlocation := (
+		if($defineversion='2.1') then $itemgroupdef/def21:leaf/@xlink:href
+		else $itemgroupdef/def:leaf/@xlink:href
+	)
     let $apdatasetdoc := doc(concat($base,$apdatasetlocation))
     (: we need the OID of RSUBJID :)
     let $rsubjidoid := (
@@ -79,6 +90,6 @@ for $itemgroupdef in $definedoc//odm:ItemGroupDef[starts-with(@Name,'AP') and no
         let $rsubjid := $record/odm:ItemData[@ItemOID=$rsubjidoid]/@Value
         (: RSUBJID must either be one of DM.USUBJID or POOLDEF.POOLID :)
         where not(functx:is-value-in-sequence($rsubjid,$dmusubjidvalues)) or not(functx:is-value-in-sequence($rsubjid,$poolsetpoolidvalues))
-        return <error rule="CG0157-CG0158" dataset="{data($name)}" variable="RSUBJID" recordnumber="{data($recnum)}" rulelastupdate="2020-06-16">Value of RSUBJID '' cannot be found in DM.USUBJID nor in POOLDEF.POOLID</error>
+        return <error rule="CG0157-CG0158" dataset="{data($name)}" variable="RSUBJID" recordnumber="{data($recnum)}" rulelastupdate="2020-08-04">Value of RSUBJID '' cannot be found in DM.USUBJID nor in POOLDEF.POOLID</error>
 	
 	

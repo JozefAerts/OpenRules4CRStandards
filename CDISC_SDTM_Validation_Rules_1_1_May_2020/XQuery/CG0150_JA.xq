@@ -14,20 +14,26 @@ See the License for the specific language governing permissions and limitations 
 (: Rule CG0150 - SUBJID unique within a study :)
 xquery version "3.0";
 declare namespace def = "http://www.cdisc.org/ns/def/v2.0";
+declare namespace def21 = "http://www.cdisc.org/ns/def/v2.1";
 declare namespace odm="http://www.cdisc.org/ns/odm/v1.3";
 declare namespace data="http://www.cdisc.org/ns/Dataset-XML/v1.0";
 declare namespace xlink="http://www.w3.org/1999/xlink";
 (: "declare variable ... external" allows to pass $base and $define from an external programm :)
 declare variable $base external;
 declare variable $define external;
+declare variable $defineversion external;
 (: let $base := '/db/fda_submissions/cdiscpilot01/' :)
 (: let $define := 'define_2_0.xml' :)
 (: let $base := '/db/fda_submissions/cdisc01/' :)
 (: let $define := 'define2-0-0-example-sdtm.xml' :)
+let $definedoc := doc(concat($base,$define))
 (: get the OID of SUBJID in define.xml for dataset DM :)
-let $subjidoid :=  doc(concat($base,$define))//odm:ItemGroupDef[@Name='DM']/odm:ItemRef[4]/@ItemOID (: It must always be the fourth one :)
+let $subjidoid :=  $definedoc//odm:ItemGroupDef[@Name='DM']/odm:ItemRef[4]/@ItemOID (: It must always be the fourth one :)
 (: and the file where to find the DM records :)
-let $datasetname := doc(concat($base,$define))//odm:ItemGroupDef[@Name='DM']/def:leaf/@xlink:href
+let $datasetname := (
+	if($defineversion='2.1') then $definedoc//odm:ItemGroupDef[@Name='DM']/def21:leaf/@xlink:href
+	else $definedoc//odm:ItemGroupDef[@Name='DM']/def:leaf/@xlink:href
+)
 let $dataset := concat($base,$datasetname) 
 (: iterate over all records in the DM dataset :)
 for $record in doc($dataset)//odm:ItemGroupData
@@ -37,6 +43,6 @@ for $record in doc($dataset)//odm:ItemGroupData
     (: and get all following records with the same value of SUBJID :)
     let $count := count(doc($dataset)//odm:ItemGroupData[@data:ItemGroupDataSeq > $recnum][odm:ItemData[@ItemOID=$subjidoid][@Value=$subjidvalue]])
     where $count > 0
-    return <error rule="CG0150" dataset="DM" variable="SUBJID" rulelastupdate="2020-06-14" recordnumber="{data($recnum)}">Duplicate value of SUBJID={data($subjidvalue)} - {data($count)} in dataset {data($datasetname)}</error>			
+    return <error rule="CG0150" dataset="DM" variable="SUBJID" rulelastupdate="2020-08-04" recordnumber="{data($recnum)}">Duplicate value of SUBJID={data($subjidvalue)} - {data($count)} in dataset {data($datasetname)}</error>			
 		
 	

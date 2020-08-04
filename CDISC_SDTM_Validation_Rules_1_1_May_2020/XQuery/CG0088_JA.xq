@@ -15,21 +15,26 @@ See the License for the specific language governing permissions and limitations 
 Applies to: EVENTS,INTERVENTIONS, NOT(DS, DV, AE) :)
 xquery version "3.0";
 declare namespace def = "http://www.cdisc.org/ns/def/v2.0";
+declare namespace def21 = "http://www.cdisc.org/ns/def/v2.1";
 declare namespace odm="http://www.cdisc.org/ns/odm/v1.3";
 declare namespace data="http://www.cdisc.org/ns/Dataset-XML/v1.0";
 declare namespace xlink="http://www.w3.org/1999/xlink";
 (: "declare variable ... external" allows to pass $base and $define from an external programm :)
 declare variable $base external; 
 declare variable $define external; 
+declare variable $defineversion external;
 (: let $base := '/db/fda_submissions/cdisc01/' :)
 (: let $define := 'define2-0-0-example-sdtm.xml' :)
 let $definedoc := doc(concat($base,$define))
 (: Applies to: EVENTS,INTERVENTIONS but not to AE, DS, DV :)
-for $itemgroupdef in $definedoc//odm:ItemGroupDef[@def:Class='INTERVENTIONS' or @def:Class='EVENTS' and not(@Name='AE') and not(@Name='DS') and not(@Name='DV')]
+for $itemgroupdef in $definedoc//odm:ItemGroupDef[upper-case(@def:Class)='INTERVENTIONS' or upper-case(@def:Class)='EVENTS' or upper-case(./def21:Class/@Name)='INTERVENTIONS' or upper-case(./def21:Class/@Name)='EVENTS' and not(@Name='AE') and not(@Name='DS') and not(@Name='DV')]
     let $name := $itemgroupdef/@Name
     (: get the dataset :)
     let $name := $itemgroupdef/@Name
-    let $datasetlocation := $itemgroupdef/def:leaf/@xlink:href
+	let $datasetlocation := (
+		if($defineversion='2.1') then $itemgroupdef/def21:leaf/@xlink:href
+		else $itemgroupdef/def:leaf/@xlink:href
+	)
     let $datasetdoc := doc(concat($base,$datasetlocation))
     (: get the OID and name of --PRESP :)
     let $prespoid := (
@@ -48,6 +53,6 @@ for $itemgroupdef in $definedoc//odm:ItemGroupDef[@def:Class='INTERVENTIONS' or 
     (: When --PRESP not present in dataset then --OCCUR not present in dataset :)
     where not($prespoid) and $occuroid
     return 
-         <error rule="CG0088" rulelastupdate="2020-06-11" dataset="{data($name)}" variable="{data($occurname)}" >Variable {data($occurname)} is present in dataset {data($name)} although {data($prespname)} is not present in the dataset</error>			
+         <error rule="CG0088" rulelastupdate="2020-08-04" dataset="{data($name)}" variable="{data($occurname)}" >Variable {data($occurname)} is present in dataset {data($name)} although {data($prespname)} is not present in the dataset</error>			
 		
 	

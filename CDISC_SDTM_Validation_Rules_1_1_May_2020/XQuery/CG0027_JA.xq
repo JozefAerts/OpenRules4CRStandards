@@ -14,12 +14,14 @@ See the License for the specific language governing permissions and limitations 
 (: Rule CG0027: --SCAT and --CAT must have different values :)
 xquery version "3.0";
 declare namespace def = "http://www.cdisc.org/ns/def/v2.0";
+declare namespace def21 = "http://www.cdisc.org/ns/def/v2.1";
 declare namespace odm="http://www.cdisc.org/ns/odm/v1.3";
 declare namespace data="http://www.cdisc.org/ns/Dataset-XML/v1.0";
 declare namespace xlink="http://www.w3.org/1999/xlink";
 (: "declare variable ... external" allows to pass $base and $define from an external programm :)
 declare variable $base external;
 declare variable $define external; 
+declare variable $defineversion external;
 (: let $base := 'LZZT_SDTM_Dataset-XML/' :)
 (: let $define := 'define_2_0.xml' :)
 let $definedoc := doc(concat($base,$define))
@@ -46,9 +48,14 @@ for $itemgroupdef in $definedoc//odm:ItemGroupDef
     let $catname := $definedoc//odm:ItemDef[@OID=$catoid]/@Name
     let $scatname := $definedoc//odm:ItemDef[@OID=$scatoid]/@Name
     (: get the dataset location and document :)
-    let $datasetname := $itemgroupdef/def:leaf/@xlink:href
-   	let $datasetlocation := concat($base,$datasetname)
-    let $datasetdoc := doc($datasetlocation)
+	let $datasetname := (
+		if($defineversion='2.1') then $itemgroupdef/def21:leaf/@xlink:href
+		else $itemgroupdef/def:leaf/@xlink:href
+	)
+    let $datasetdoc := (
+		if($datasetname) then doc(concat($base,$datasetname))
+		else ()
+	)
     (: iterate over all rows in the dataset, 
     but only when there --CAT and --SCAT have been defined :)
     for $record in $datasetdoc//odm:ItemGroupData[$catoid  and $scatoid]
@@ -56,6 +63,6 @@ for $itemgroupdef in $definedoc//odm:ItemGroupDef
         let $catvalue := $record/odm:ItemData[@ItemOID=$catoid]/@Value
         let $scatvalue := $record/odm:ItemData[@ItemOID=$scatoid]/@Value
         where $catvalue != '' and $scatvalue != '' and $catvalue=$scatvalue
-        return <error rule="CG0027" dataset="{data($name)}" variable="{data($scatname)}" recordnumber="{data($recnum)}" rulelastupdate="2020-06-09">Value of {data($catname)} and {data($scatname)} are identical: '{data($catvalue)}'</error>	
+        return <error rule="CG0027" dataset="{data($name)}" variable="{data($scatname)}" recordnumber="{data($recnum)}" rulelastupdate="2020-08-04">Value of {data($catname)} and {data($scatname)} are identical: '{data($catvalue)}'</error>	
 	
 	

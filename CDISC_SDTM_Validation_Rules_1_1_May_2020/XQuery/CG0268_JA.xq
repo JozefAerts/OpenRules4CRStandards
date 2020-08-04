@@ -14,12 +14,14 @@ See the License for the specific language governing permissions and limitations 
 (: Rule CG0268 - When TSPARMCD not unique then TSSEQ is unique for each distinct value of TSPARMCD :)
 xquery version "3.0";
 declare namespace def = "http://www.cdisc.org/ns/def/v2.0";
+declare namespace def21 = "http://www.cdisc.org/ns/def/v2.1";
 declare namespace odm="http://www.cdisc.org/ns/odm/v1.3";
 declare namespace data="http://www.cdisc.org/ns/Dataset-XML/v1.0";
 declare namespace xlink="http://www.w3.org/1999/xlink";
 (: "declare variable ... external" allows to pass $base and $define from an external programm :)
 declare variable $base external;
 declare variable $define external; 
+declare variable $defineversion external;
 (: let $base := '/db/fda_submissions/cdiscpilot01/' :)
 (: let $define := 'define_2_0.xml' :)
 let $definedoc := doc(concat($base,$define))
@@ -27,7 +29,10 @@ let $definedoc := doc(concat($base,$define))
 for $datasetdef in $definedoc//odm:ItemGroupDef[@Name='TS']
     let $name := $datasetdef/@Name
     (: get the location of the dataset :)
-    let $datasetname := $datasetdef/def:leaf/@xlink:href
+	let $datasetname := (
+		if($defineversion='2.1') then $datasetdef/def21:leaf/@xlink:href
+		else $datasetdef/def:leaf/@xlink:href
+	)
     let $datasetlocation:= concat($base,$datasetname)
     let $datasetdoc := doc($datasetlocation)
     (: and get the OIDs of TSPARMCD and TSSEQ :)
@@ -62,6 +67,6 @@ for $datasetdef in $definedoc//odm:ItemGroupDef[@Name='TS']
             for $recordduplicate in $record/following-sibling::odm:ItemGroupData[odm:ItemData[@ItemOID=$tsseqoid and @Value=$tsseq]]
                 let $recnumduplicate := $recordduplicate/@data:ItemGroupDataSeq
                 (: and give the error message :)
-                return <error rule="CG0268" dataset="{data($name)}" variable="TSSEQ" rulelastupdate="2020-06-15">Inconsistent value for TSSEQ within TSPARMCD={data($tsparmcd)} in dataset {data($datasetname)}. Records {data($recnum)} and {data($recnumduplicate)} have the same value for TSSEQ={data($tsseq)}</error>			
+                return <error rule="CG0268" dataset="{data($name)}" variable="TSSEQ" rulelastupdate="2020-08-04">Inconsistent value for TSSEQ within TSPARMCD={data($tsparmcd)} in dataset {data($datasetname)}. Records {data($recnum)} and {data($recnumduplicate)} have the same value for TSSEQ={data($tsseq)}</error>			
 		
 	

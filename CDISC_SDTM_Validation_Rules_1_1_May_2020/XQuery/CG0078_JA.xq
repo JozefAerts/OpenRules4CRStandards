@@ -14,19 +14,24 @@ See the License for the specific language governing permissions and limitations 
 (: Rule CG0078: When MHENDTC != null then MHENDTC < DM.RFSTDTC :)
 xquery version "3.0";
 declare namespace def = "http://www.cdisc.org/ns/def/v2.0";
+declare namespace def21 = "http://www.cdisc.org/ns/def/v2.1";
 declare namespace odm="http://www.cdisc.org/ns/odm/v1.3";
 declare namespace data="http://www.cdisc.org/ns/Dataset-XML/v1.0";
 declare namespace xlink="http://www.w3.org/1999/xlink";
 (: "declare variable ... external" allows to pass $base and $define from an external programm :)
 declare variable $base external; 
 declare variable $define external; 
+declare variable $defineversion external;
 (: let $base := '/db/fda_submissions/cdisc01/' :)
 (: let $define := 'define2-0-0-example-sdtm.xml' :)
 let $definedoc := doc(concat($base,$define))
 (: get the MH dataset - take splitted domains into account :)
 let $mhitemgroupdef := $definedoc//odm:ItemGroupDef[starts-with(@Name,'MH') or @Domain='MH']
 let $name := $mhitemgroupdef/@Name
-let $mhdatasetlocation := $mhitemgroupdef/def:leaf/@xlink:href
+let $mhdatasetlocation := (
+	if($defineversion='2.1') then $mhitemgroupdef/def21:leaf/@xlink:href
+	else $mhitemgroupdef/def:leaf/@xlink:href
+)
 let $mhdatasetdoc := doc(concat($base,$mhdatasetlocation))
 (: get the OID of MHENDTC and of USUBJID in MH :)
 let $mhendtcoid := (
@@ -41,7 +46,10 @@ let $mhusubjidoid := (
 )
 (: Get the DM dataset and its location :)
 let $dmitemgroupdef := $definedoc//odm:ItemGroupDef[@Name='DM']
-let $dmdatasetlocation := $dmitemgroupdef/def:leaf/@xlink:href
+let $dmdatasetlocation := (
+	if($defineversion='2.1') then $dmitemgroupdef/def21:leaf/@xlink:href
+	else $dmitemgroupdef/def:leaf/@xlink:href
+)
 let $dmdatasetdoc := doc(concat($base,$dmdatasetlocation))
 (: and the OID of USUBJID and of RFSTDTC :)
 let $dmusubjidoid := (
@@ -76,6 +84,6 @@ for $record in $mhdatasetdoc//odm:ItemGroupData[odm:ItemData[@ItemOID=$mhendtcoi
     give an error when MHENDTC > RFSTDTC :)
 
     where $rfstdtc castable as xs:date and $mhendtccomplete castable as xs:date and not(xs:date($mhendtccomplete) <= xs:date($rfstdtc))
-    return <error rule="CG0078" variable="MHENDTC" dataset="{data($name)}" rulelastupdate="2020-06-11" recordnumber="{data($recnum)}">MHENDTC={data($mhendtc)} is after or on RFSTDTC={data($rfstdtc)}</error>
+    return <error rule="CG0078" variable="MHENDTC" dataset="{data($name)}" rulelastupdate="2020-08-04" recordnumber="{data($recnum)}">MHENDTC={data($mhendtc)} is after or on RFSTDTC={data($rfstdtc)}</error>
 		
 	

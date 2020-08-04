@@ -15,18 +15,20 @@ See the License for the specific language governing permissions and limitations 
 Applies to INTERVENTIONS domains :)
 xquery version "3.0";
 declare namespace def = "http://www.cdisc.org/ns/def/v2.0";
+declare namespace def21 = "http://www.cdisc.org/ns/def/v2.1";
 declare namespace odm="http://www.cdisc.org/ns/odm/v1.3";
 declare namespace data="http://www.cdisc.org/ns/Dataset-XML/v1.0";
 declare namespace xlink="http://www.w3.org/1999/xlink";
 (: "declare variable ... external" allows to pass $base and $define from an external programm :)
 declare variable $base external;
 declare variable $define external; 
+declare variable $defineversion external;
 declare variable $datasetname external;
 (: let $base := '/db/fda_submissions/cdisc01/' :)
 (: let $define := 'define2-0-0-example-sdtm.xml' :)
 let $definedoc := doc(concat($base,$define))
 (: Iterate over the INTERVENTIONS datasets :)
-for $itemgroupdef in $definedoc//odm:ItemGroupDef[@def:Class='INTERVENTIONS'][@Name=$datasetname]
+for $itemgroupdef in $definedoc//odm:ItemGroupDef[upper-case(@def:Class)='INTERVENTIONS' or upper-case(./def21:Class/@Name)='INTERVENTIONS'][@Name=$datasetname]
     let $name := $itemgroupdef/@Name
     (: get the OID and Name of --TRTV :)
     let $trtvoid := (
@@ -43,7 +45,10 @@ for $itemgroupdef in $definedoc//odm:ItemGroupDef[@def:Class='INTERVENTIONS'][@N
     )
     let $vamtname := $definedoc//odm:ItemDef[@OID=$vamtoid]/@Name
     (: get the dataset location and make it a document :)
-    let $datasetlocation := $itemgroupdef/def:leaf/@xlink:href
+	let $datasetlocation := (
+		if($defineversion='2.1') then $itemgroupdef/def21:leaf/@xlink:href
+		else $itemgroupdef/def:leaf/@xlink:href
+	)
     let $datasetdoc := doc(concat($base,$datasetlocation))
     (: iterate over all records in the dataset for which --TRTV is null (i.e. absent in Dataset-XML) :)
     for $record in $datasetdoc//odm:ItemGroupData[not(odm:ItemData[@ItemOID=$trtvoid])]
@@ -53,6 +58,6 @@ for $itemgroupdef in $definedoc//odm:ItemGroupDef[@def:Class='INTERVENTIONS'][@N
         (: give an error when there is a --VAMT value :)
         where $vamt and $vamt!=''
         return
-        <error rule="CG0106" dataset="{data($name)}" variable="{data($vamtname)}" recordnumber="{data($recnum)}" rulelastupdate="2020-06-14">{data($name)}={data($vamt)} but was expected to be null as {data($trtvname)} is null</error>
+        <error rule="CG0106" dataset="{data($name)}" variable="{data($vamtname)}" recordnumber="{data($recnum)}" rulelastupdate="2020-08-04">{data($name)}={data($vamt)} but was expected to be null as {data($trtvname)} is null</error>
 		
 	

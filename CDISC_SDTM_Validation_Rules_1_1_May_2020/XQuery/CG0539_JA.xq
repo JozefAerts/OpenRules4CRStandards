@@ -15,12 +15,14 @@ See the License for the specific language governing permissions and limitations 
 	then No more than 1 record per subject has DSSCAT = 'STUDY TREATMENT'  :)
 xquery version "3.0";
 declare namespace def = "http://www.cdisc.org/ns/def/v2.0";
+declare namespace def21 = "http://www.cdisc.org/ns/def/v2.1";
 declare namespace odm="http://www.cdisc.org/ns/odm/v1.3";
 declare namespace data="http://www.cdisc.org/ns/Dataset-XML/v1.0";
 declare namespace xlink="http://www.w3.org/1999/xlink";
 declare namespace xs="http://www.w3.org/2001/XMLSchema";
 declare variable $base external;
 declare variable $define external; 
+declare variable $defineversion external;
 (: let $base := 'LZZT_SDTM_Dataset-XML/' :)
 (: let $define := 'define_2_0.xml' :)
 let $definedoc := doc(concat($base,$define))
@@ -49,7 +51,10 @@ let $epochoid := (
 )
 (: get the location of the DS dataset :)
 (: and the DS document itself :)
-let $dslocation := $dsitemgroupdef/def:leaf/@xlink:href
+let $dslocation := (
+	if($defineversion='2.1') then $dsitemgroupdef/def21:leaf/@xlink:href
+	else $dsitemgroupdef/def:leaf/@xlink:href
+)
 let $dsdoc := (
 	if($dslocation) then doc(concat($base,$dslocation))
     else ()  (: No DS dataset present :)
@@ -87,6 +92,6 @@ for $group in $orderedrecords
         AND there is more than 1 DSSCAT='STUDY TREATMENT' record for this subject
         :)
         where $numbercordsingroup > 1 and $countstudytreatmentrecords > 1
-        return <error rule="CG0539" dataset="DS" recordnumber="{data($recnum)}" rulelastupdate="2020-06-21">There is more than 1 record ({$countstudytreatmentrecords} records were found) with DSSCAT='STUDY TREATMENT' although there are more than 1 records with the same value for EPOCH='{data($epochvalue)}' and DSCAT='DISPOSITION EVENT' for subject with USUBJID='{data($usubjidvalue)}'</error>	
+        return <error rule="CG0539" dataset="DS" recordnumber="{data($recnum)}" rulelastupdate="2020-08-04">There is more than 1 record ({$countstudytreatmentrecords} records were found) with DSSCAT='STUDY TREATMENT' although there are more than 1 records with the same value for EPOCH='{data($epochvalue)}' and DSCAT='DISPOSITION EVENT' for subject with USUBJID='{data($usubjidvalue)}'</error>	
 	
 	

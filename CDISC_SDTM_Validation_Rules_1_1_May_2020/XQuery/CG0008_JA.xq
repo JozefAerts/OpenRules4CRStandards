@@ -16,39 +16,48 @@ Precondition: --TPTREF = null
 Rule: --ELTM = null :)
 xquery version "3.0";
 declare namespace def = "http://www.cdisc.org/ns/def/v2.0";
+declare namespace def21 = "http://www.cdisc.org/ns/def/v2.1";
 declare namespace odm="http://www.cdisc.org/ns/odm/v1.3";
 declare namespace data="http://www.cdisc.org/ns/Dataset-XML/v1.0";
 declare namespace xlink="http://www.w3.org/1999/xlink"; 
 (: "declare variable ... external" allows to pass $base and $define from an external programm :)
 declare variable $base external;
 declare variable $define external; 
+declare variable $defineversion external;
 (: let $base := 'LZZT_SDTM_Dataset-XML/' :)
 (: let $define := 'define_2_0.xml' :)
+let $definedoc := doc(concat($base,$define))
 (: iterate over all datasets except for DM :)
-for $dataset in doc(concat($base,$define))//odm:ItemGroupDef[not(@Name='DM')]
+for $dataset in $definedoc//odm:ItemGroupDef[not(@Name='DM')]
     let $name := $dataset/@Name
-    let $datasetname := $dataset/def:leaf/@xlink:href
-    let $datasetlocation := concat($base,$datasetname)
+	let $datasetname := (
+		if($defineversion='2.1') then $dataset/def21:leaf/@xlink:href
+		else $dataset/def:leaf/@xlink:href
+	)
+    let $datasetdoc := (
+		if($datasetname) then doc(concat($base,$datasetname))
+		else ()
+	)
     (: Get the OID of the TPTREF and ELTM variable (when present) :)
     let $tptrefoid := (
-        for $a in doc(concat($base,$define))//odm:ItemDef[ends-with(@Name,'TPTREF')]/@OID 
-        where $a = doc(concat($base,$define))//odm:ItemGroupDef[@Name=$name]/odm:ItemRef/@ItemOID
+        for $a in $definedoc//odm:ItemDef[ends-with(@Name,'TPTREF')]/@OID 
+        where $a = $definedoc//odm:ItemGroupDef[@Name=$name]/odm:ItemRef/@ItemOID
         return $a
     )
-    (: let $tptrefname := doc(concat($base,$define))//odm:ItemDef[@OID=$tptrefoid]/@Name :)
+    (: let $tptrefname := $definedoc//odm:ItemDef[@OID=$tptrefoid]/@Name :)
     let $tptrefname := concat($name,'TPTREF')
     let $eltmoid := (
-        for $a in doc(concat($base,$define))//odm:ItemDef[ends-with(@Name,'ELTM')]/@OID 
-        where $a = doc(concat($base,$define))//odm:ItemGroupDef[@Name=$name]/odm:ItemRef/@ItemOID
+        for $a in $definedoc//odm:ItemDef[ends-with(@Name,'ELTM')]/@OID 
+        where $a = $definedoc//odm:ItemGroupDef[@Name=$name]/odm:ItemRef/@ItemOID
         return $a
     )
-    let $eltmname := doc(concat($base,$define))//odm:ItemDef[@OID=$eltmoid]/@Name
+    let $eltmname := $definedoc//odm:ItemDef[@OID=$eltmoid]/@Name
     (: iterate over all the records that do have an ELTM data point :)
-    for $record in doc($datasetlocation)//odm:ItemGroupData[odm:ItemData[@ItemOID=$eltmoid]]
+    for $record in $datasetdoc//odm:ItemGroupData[odm:ItemData[@ItemOID=$eltmoid]]
         let $recnum := $record/@data:ItemGroupDataSeq
         (: get the value of the TPTREF and ELTM data points (if any) :)
         let $tptrefvalue := $record/odm:ItemData[@ItemOID=$tptrefoid]/@Value
         let $eltmvalue := $record/odm:ItemData[@ItemOID=$eltmoid]/@Value 
         (: when TPTREF is null, --ELTM must be null :)
         where not($tptrefvalue) and  $eltmvalue
-        return <error rule="CG0008" variable="{data($tptrefname)}" dataset="{data($name)}" rulelastupdate="2020-06-08" recordnumber="{data($recnum)}">Missing value for {data($eltmname)} is not null although {data($tptrefname)} is not populated, value of {data($eltmname)}={data($eltmvalue)}</error>				
+        return <error rule="CG0008" variable="{data($tptrefname)}" dataset="{data($name)}" rulelastupdate="2020-08-04" recordnumber="{data($recnum)}">Missing value for {data($eltmname)} is not null although {data($tptrefname)} is not populated, value of {data($eltmname)}={data($eltmvalue)}</error>				

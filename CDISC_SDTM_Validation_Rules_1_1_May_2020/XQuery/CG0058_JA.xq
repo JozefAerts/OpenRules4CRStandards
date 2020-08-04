@@ -14,12 +14,14 @@ See the License for the specific language governing permissions and limitations 
 (: Rule CG0058 when --ENRTPT present in dataset present in dataset then --ENTPT must be present in dataset :)
 xquery version "3.0";
 declare namespace def = "http://www.cdisc.org/ns/def/v2.0";
+declare namespace def21 = "http://www.cdisc.org/ns/def/v2.1";
 declare namespace odm="http://www.cdisc.org/ns/odm/v1.3";
 declare namespace data="http://www.cdisc.org/ns/Dataset-XML/v1.0";
 declare namespace xlink="http://www.w3.org/1999/xlink";
 (: "declare variable ... external" allows to pass $base and $define from an external programm :)
 declare variable $base external; 
 declare variable $define external; 
+declare variable $defineversion external;
 (: let $base := '/db/fda_submissions/cdisc01/' :)
 (: let $define := 'define2-0-0-example-sdtm.xml' :)
 let $definedoc := doc(concat($base,$define))
@@ -46,6 +48,6 @@ for $itemgroupdef in $definedoc//odm:ItemGroupDef
     let $enrtptname := $definedoc//odm:ItemDef[@OID=$enrtptoid]/@Name
     (: when --ENRTPT present in dataset then --ENTPT must present in dataset :)
     where $enrtptoid and not($entptoid)
-    return <error rule="CG0058" variable="{data($entptname)}" dataset="{$name}" rulelastupdate="2020-06-11">{data($entptname)} is not present although {data($enrtptname)} is present</error>	
+    return <error rule="CG0058" variable="{data($entptname)}" dataset="{$name}" rulelastupdate="2020-08-04">{data($entptname)} is not present although {data($enrtptname)} is present</error>	
 		
 	

@@ -14,18 +14,20 @@ See the License for the specific language governing permissions and limitations 
 (: Rule CG0114 - When --DOSE != null or --DOSTOT != null or --DOSTXT != null then --DOSU != null :)
 xquery version "3.0";
 declare namespace def = "http://www.cdisc.org/ns/def/v2.0";
+declare namespace def21 = "http://www.cdisc.org/ns/def/v2.1";
 declare namespace odm="http://www.cdisc.org/ns/odm/v1.3";
 declare namespace data="http://www.cdisc.org/ns/Dataset-XML/v1.0";
 declare namespace xlink="http://www.w3.org/1999/xlink"; 
 (: "declare variable ... external" allows to pass $base and $define from an external programm :)
 declare variable $base external;
 declare variable $define external; 
+declare variable $defineversion external;
 declare variable $datasetname external;
 (: let $base := '/db/fda_submissions/cdisc01/' :)
 (: let $define := 'define2-0-0-example-sdtm.xml' :)
 let $definedoc := doc(concat($base,$define))
 (: iterate over all the selected datasets , but only the INTERVENTIONS ones :)
-for $dataset in doc(concat($base,$define))//odm:ItemGroupDef[upper-case(@def:Class)='INTERVENTIONS'][@Name=$datasetname]
+for $dataset in $definedoc//odm:ItemGroupDef[upper-case(@def:Class)='INTERVENTIONS' or upper-case(./def21:Class/@Name)='INTERVENTIONS'][@Name=$datasetname]
     (: get the dataset :)
     let $domain := $dataset/@Domain
     let $name := $dataset/@Name
@@ -34,7 +36,10 @@ for $dataset in doc(concat($base,$define))//odm:ItemGroupDef[upper-case(@def:Cla
         if($dataset/@Domain) then $dataset/@Domain
         else substring($name,1,2)
     )
-    let $dsname := $dataset/def:leaf/@xlink:href
+	let $dsname := (
+		if($defineversion='2.1') then $dataset/def21:leaf/@xlink:href
+		else $dataset/def:leaf/@xlink:href
+	)
     let $datasetdoc := doc(concat($base,$dsname))
     (: get the OID and name of the --DOSTOT variable :)
     let $dostotoid := (
@@ -63,12 +68,12 @@ for $dataset in doc(concat($base,$define))//odm:ItemGroupDef[upper-case(@def:Cla
         where $a = $definedoc//odm:ItemGroupDef[@Name=$name]/odm:ItemRef/@ItemOID
         return $a
     )
-    let $dosuname := doc(concat($base,$define))//odm:ItemDef[@OID=$dosuoid]/@Name
+    let $dosuname := $definedoc//odm:ItemDef[@OID=$dosuoid]/@Name
     (: iterate over all record in the dataset for which there is a DOSE, DOSTXT or DOSTOT data point :) 
     for $record in $datasetdoc//odm:ItemGroupData[odm:ItemData[@ItemOID=$doseoid] or odm:ItemData[@ItemOID=$dostxtoid] or odm:ItemData[@ItemOID=$dostotoid]]
         let $recnum := $record/@data:ItemGroupDataSeq
         (: DOSEU must be populated :)
         where not($record/odm:ItemData[@ItemOID=$dosuoid])
-        return <error rule="CG0114" dataset="{data($name)}" variable="{data($dosuname)}" rulelastupdate="2020-06-14" recordnumber="{data($recnum)}">{data($dosuname)} is not populated although one of {data($dosename)}, {data($dostxtname)} or {data($dostotname)} is populated</error>				
+        return <error rule="CG0114" dataset="{data($name)}" variable="{data($dosuname)}" rulelastupdate="2020-08-04" recordnumber="{data($recnum)}">{data($dosuname)} is not populated although one of {data($dosename)}, {data($dostxtname)} or {data($dostotname)} is populated</error>				
 		
 	

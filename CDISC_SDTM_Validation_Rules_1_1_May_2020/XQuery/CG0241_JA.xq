@@ -14,21 +14,28 @@ See the License for the specific language governing permissions and limitations 
 (: Rule CG0241 - When --TPT != null and --TPTNUM != null and --ELTM != null then --ELTM is the same value across records with the same values of DOMAIN, VISITNUM, --TPTREF, and --TPTNUM :)
 xquery version "3.0";
 declare namespace def = "http://www.cdisc.org/ns/def/v2.0";
+declare namespace def21 = "http://www.cdisc.org/ns/def/v2.1";
 declare namespace odm="http://www.cdisc.org/ns/odm/v1.3";
 declare namespace data="http://www.cdisc.org/ns/Dataset-XML/v1.0";
 declare namespace xlink="http://www.w3.org/1999/xlink";
 (: "declare variable ... external" allows to pass $base and $define from an external programm :)
 declare variable $base external;
 declare variable $define external; 
+declare variable $defineversion external;
 (: let $base := '/db/fda_submissions/cdiscpilot01/' :)
 (: let $define := 'define_2_0.xml' :)
 let $definedoc := doc(concat($base,$define))
 (: iterate over all datasets :)
-for $datasetdef in doc(concat($base,$define))//odm:ItemGroupDef
+for $datasetdef in $definedoc//odm:ItemGroupDef
     let $name := $datasetdef/@Name
-    let $datasetname := $datasetdef/def:leaf/@xlink:href
-    let $datasetlocation:= concat($base,$datasetname)
-    let $datasetdoc := doc($datasetlocation)
+	let $datasetname := (
+		if($defineversion='2.1') then $datasetdef/def21:leaf/@xlink:href
+		else $datasetdef/def:leaf/@xlink:href
+	)
+    let $datasetdoc := (
+		if($datasetname) then doc(concat($base,$datasetname))
+		else ()
+	)
     (: and get the OIDs of --TPT, --TPTNUM and --ELTM :)
     let $tptoid := (
         for $a in $definedoc//odm:ItemDef[ends-with(@Name,'TPT')]/@OID 
@@ -83,6 +90,6 @@ for $datasetdef in doc(concat($base,$define))//odm:ItemGroupDef
         let $count := count(distinct-values($group/odm:ItemGroupData/odm:ItemData[@ItemOID=$eltmoid]/@Value))
         (: the number of distinct values of ELTM within each group must be exactly 1 :)
         where $count != 1
-        return <error rule="CG0241" dataset="{data($name)}" variable="{data($eltmname)}" rulelastupdate="2020-06-15">Inconsistent value for {data($eltmname)} within group of DOMAIN/VISITNUM/{data($tptrefname)}/{data($tptnumname)} in dataset {data($datasetname)}. {data($count)} different {data($eltmname)} values were found for this group</error>				
+        return <error rule="CG0241" dataset="{data($name)}" variable="{data($eltmname)}" rulelastupdate="2020-08-04">Inconsistent value for {data($eltmname)} within group of DOMAIN/VISITNUM/{data($tptrefname)}/{data($tptnumname)} in dataset {data($datasetname)}. {data($count)} different {data($eltmname)} values were found for this group</error>				
 		
 	

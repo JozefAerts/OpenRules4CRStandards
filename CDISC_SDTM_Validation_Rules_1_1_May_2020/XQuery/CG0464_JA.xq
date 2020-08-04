@@ -12,8 +12,10 @@ See the License for the specific language governing permissions and limitations 
 :)
 
 (: Rule CG0464 - EVENTS class: When Custom domain present in study then --TERM present in dataset :)
+(: TODO: Custom (non-standard) domain indicator in define.xml 2.1 :)
 xquery version "3.0";
 declare namespace def = "http://www.cdisc.org/ns/def/v2.0";
+declare namespace def21 = "http://www.cdisc.org/ns/def/v2.1";
 declare namespace odm="http://www.cdisc.org/ns/odm/v1.3";
 declare namespace data="http://www.cdisc.org/ns/Dataset-XML/v1.0";
 declare namespace xlink="http://www.w3.org/1999/xlink";
@@ -27,6 +29,7 @@ declare function functx:is-value-in-sequence
 (: "declare variable ... external" allows to pass $base and $define from an external programm :)
 declare variable $base external;
 declare variable $define external; 
+declare variable $defineversion external;
 (: let $base := '/db/fda_submissions/cdisc01/' :)
 (: let $define := 'define2-0-0-example-sdtm.xml' :)
 let $definedoc := doc(concat($base,$define))
@@ -36,7 +39,7 @@ http://xml4pharmaserver.com:8080/CDISCDomainService/rest/DomainForClassForVersio
 let $eventsdomains := ('AE','CE','DS','DV','HO','MH')
 (: iterate over all custom domains in the submission that are EVENTS domains 
 so that are not in the list of the SDTM events domains :)
-for $itemgroupdef in $definedoc//odm:ItemGroupDef[upper-case(@def:Class)='EVENTS' and not(functx:is-value-in-sequence(substring(@Name,1,2),$eventsdomains))]
+for $itemgroupdef in $definedoc//odm:ItemGroupDef[upper-case(@def:Class)='EVENTS' or upper-case(./def21:Class/@Name)='EVENTS' and not(functx:is-value-in-sequence(substring(@Name,1,2),$eventsdomains))]
     let $name := $itemgroupdef/@Name
     (: assert that there is a --TERM variable defined in this dataset :)
     let $termoid := (
@@ -47,6 +50,6 @@ for $itemgroupdef in $definedoc//odm:ItemGroupDef[upper-case(@def:Class)='EVENTS
     let $varname := concat($name,'TERM')
     (: --TERM must be defined :)
     where not($termoid)
-    return <error rule="CG0464" dataset="{data($name)}" variable="{data($varname)}" rulelastupdate="2020-06-19">{data($varname)} is not present in EVENTS custom domain {data($name)}</error>										
+    return <error rule="CG0464" dataset="{data($name)}" variable="{data($varname)}" rulelastupdate="2020-08-04">{data($varname)} is not present in EVENTS custom domain {data($name)}</error>										
 		
 	

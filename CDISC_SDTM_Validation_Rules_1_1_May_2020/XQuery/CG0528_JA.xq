@@ -14,6 +14,7 @@ See the License for the specific language governing permissions and limitations 
 (: Rule CG0528: DM/SUPPDM: "ADSL Population flags (COMPLT; FULLSET; ITT; PPROT; and SAFETY) not in SUPPDM":)
 xquery version "3.0";
 declare namespace def = "http://www.cdisc.org/ns/def/v2.0";
+declare namespace def21 = "http://www.cdisc.org/ns/def/v2.1";
 declare namespace odm="http://www.cdisc.org/ns/odm/v1.3";
 declare namespace data="http://www.cdisc.org/ns/Dataset-XML/v1.0";
 declare namespace xlink="http://www.w3.org/1999/xlink";
@@ -21,12 +22,16 @@ declare namespace functx = "http://www.functx.com";
 (: "declare variable ... external" allows to pass $base and $define from an external programm :)
 declare variable $base external;
 declare variable $define external; 
+declare variable $defineversion external;
 (: let $base := 'LZZT_SDTM_Dataset-XML/' :)
 (: let $define := 'define_2_0.xml' :)
 let $definedoc := doc(concat($base,$define))
 (: Get the SUPPDM dataset - there should be only one :)
 for $dataset in $definedoc//odm:ItemGroupDef[@Name='SUPPDM']
-    let $datasetname := $dataset/def:leaf/@xlink:href
+	let $datasetname := (
+		if($defineversion='2.1') then $dataset/def21:leaf/@xlink:href
+		else $dataset/def:leaf/@xlink:href
+	)
     let $datasetlocation := concat($base,$datasetname)
     (: and the document for it (when present) :)
     let $suppdmdoc := (
@@ -46,6 +51,6 @@ for $dataset in $definedoc//odm:ItemGroupDef[@Name='SUPPDM']
         let $qnamvalue := $record/odm:ItemData[@ItemOID=$qnamoid]/@Value
         (: give an error when the value of QNAM is one of 'COMPLT', 'FULLSET', 'ITT', 'PPROT', or 'SAFETY' :)
         where starts-with($qnamvalue,'COMPLT') or starts-with($qnamvalue,'FULLSET') or starts-with($qnamvalue,'ITT') or starts-with($qnamvalue,'PPROT') or starts-with($qnamvalue,'SAFETY')
-        return <error rule="CG0528" dataset="SUPPDM" variable="QNAM" rulelastupdate="2020-06-21" recordnumber="{data($recnum)}">Supplemental qualifier '{data($qnamvalue)}' is not allowed to be used in SUPPDM</error>	
+        return <error rule="CG0528" dataset="SUPPDM" variable="QNAM" rulelastupdate="2020-08-04" recordnumber="{data($recnum)}">Supplemental qualifier '{data($qnamvalue)}' is not allowed to be used in SUPPDM</error>	
 	
 	

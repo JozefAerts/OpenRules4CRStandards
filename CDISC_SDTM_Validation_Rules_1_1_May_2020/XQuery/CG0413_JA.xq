@@ -14,12 +14,14 @@ See the License for the specific language governing permissions and limitations 
 (: Rule CG0413 - Dataset name begins with DOMAIN value  :)
 xquery version "3.0";
 declare namespace def = "http://www.cdisc.org/ns/def/v2.0";
+declare namespace def21 = "http://www.cdisc.org/ns/def/v2.1";
 declare namespace odm="http://www.cdisc.org/ns/odm/v1.3";
 declare namespace data="http://www.cdisc.org/ns/Dataset-XML/v1.0";
 declare namespace xlink="http://www.w3.org/1999/xlink";
 (: "declare variable ... external" allows to pass $base and $define from an external programm :)
 declare variable $base external;
 declare variable $define external;
+declare variable $defineversion external;
 (: let $base := '/db/fda_submissions/cdiscpilot01/' :)
 (: let $define := 'define_2_0.xml' :)
 let $definedoc := doc(concat($base,$define))
@@ -30,10 +32,13 @@ b) whether the dataset name (the file name) starts with the domain name (case-in
 for $itemgroupdef in $definedoc//odm:ItemGroupDef[not(starts-with(@Name,'SUPP'))]
     let $domain := $itemgroupdef/@Domain
     let $name := $itemgroupdef/@Name
-    let $datasetfilename := $itemgroupdef/def:leaf/@xlink:href   (: This assumes that the file is in the same directory as the define.xml  :)
+	let $datasetfilename := (
+		if($defineversion='2.1') then $itemgroupdef/def21:leaf/@xlink:href   (: This assumes that the file is in the same directory as the define.xml  :)
+		else $itemgroupdef/def:leaf/@xlink:href   (: This assumes that the file is in the same directory as the define.xml  :)
+	)
     let $datasetfilenameuppercase := upper-case($datasetfilename)
     (: dataset name and file name must start with the domain name :)
     where $domain != '' and (not(starts-with($name,$domain)) or not(starts-with($datasetfilenameuppercase,$domain)))
-    return <error rule="CG0413" dataset="{data($name)}" rulelastupdate="2020-06-18" >Dataset name='{data($name)}' or file name='{data($datasetfilename)}' does not start with the domain name='{data($domain)}'</error>						
+    return <error rule="CG0413" dataset="{data($name)}" rulelastupdate="2020-08-04" >Dataset name='{data($name)}' or file name='{data($datasetfilename)}' does not start with the domain name='{data($domain)}'</error>						
 		
 	

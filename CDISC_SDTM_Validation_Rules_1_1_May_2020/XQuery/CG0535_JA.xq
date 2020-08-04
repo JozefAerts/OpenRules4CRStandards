@@ -17,12 +17,14 @@ then DSSCAT must be present/populated  :)
 It very probably should say "present and != null) :)
 xquery version "3.0";
 declare namespace def = "http://www.cdisc.org/ns/def/v2.0";
+declare namespace def21 = "http://www.cdisc.org/ns/def/v2.1";
 declare namespace odm="http://www.cdisc.org/ns/odm/v1.3";
 declare namespace data="http://www.cdisc.org/ns/Dataset-XML/v1.0";
 declare namespace xlink="http://www.w3.org/1999/xlink";
 declare namespace xs="http://www.w3.org/2001/XMLSchema";
 declare variable $base external;
 declare variable $define external; 
+declare variable $defineversion external;
 (: let $base := 'LZZT_SDTM_Dataset-XML/' :)
 (: let $define := 'define_2_0.xml' :)
 let $definedoc := doc(concat($base,$define))
@@ -51,7 +53,10 @@ let $epochoid := (
 )
 (: get the location of the DS dataset :)
 (: and the DS document itself :)
-let $dslocation := $dsitemgroupdef/def:leaf/@xlink:href
+let $dslocation := (
+	if($defineversion='2.1') then $dsitemgroupdef/def21:leaf/@xlink:href
+	else $dsitemgroupdef/def:leaf/@xlink:href
+)
 let $dsdoc := (
 	if($dslocation) then doc(concat($base,$dslocation))
     else ()  (: No DS dataset present :)
@@ -85,6 +90,6 @@ for $group in $orderedrecords
         (with the same value for USUBJID and EPOCH) is >1, 
         and DSSCAT is absent or not populated :)
         where $epochvalue and $numercordsingroup > 1 and not($dsscatvalue)
-        return <error rule="CG0535" dataset="DS" variable="DSSCAT" recordnumber="{data($recnum)}" rulelastupdate="2020-06-21">DSSCAT is not populated although there are {data($numercordsingroup)} records with the same value of USUBJID = '{data($usubjidvalue)}' and EPOCH='{data($epochvalue)}' and DSCAT='DISPOSITION EVENT'</error> 
+        return <error rule="CG0535" dataset="DS" variable="DSSCAT" recordnumber="{data($recnum)}" rulelastupdate="2020-08-04">DSSCAT is not populated although there are {data($numercordsingroup)} records with the same value of USUBJID = '{data($usubjidvalue)}' and EPOCH='{data($epochvalue)}' and DSCAT='DISPOSITION EVENT'</error> 
 	
 	

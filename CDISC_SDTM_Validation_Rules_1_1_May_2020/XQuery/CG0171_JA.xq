@@ -14,24 +14,35 @@ See the License for the specific language governing permissions and limitations 
 (: Rule CG0171: When SSSTRESC = 'DEAD' then SSDTC >= DM.DTHDTC :)
 xquery version "3.0";
 declare namespace def = "http://www.cdisc.org/ns/def/v2.0";
+declare namespace def21 = "http://www.cdisc.org/ns/def/v2.1";
 declare namespace odm="http://www.cdisc.org/ns/odm/v1.3";
 declare namespace data="http://www.cdisc.org/ns/Dataset-XML/v1.0";
 declare namespace xlink="http://www.w3.org/1999/xlink";
 (: "declare variable ... external" allows to pass $base and $define from an external programm :)
 declare variable $base external; 
 declare variable $define external; 
+declare variable $defineversion external;
 (: let $base := '/db/fda_submissions/cdisc01/' :)
 (: let $define := 'define2-0-0-example-sdtm.xml' :)
 let $definedoc := doc(concat($base,$define))
 (: Get the DM dataset :)
 let $dmitemgroupdef := $definedoc//odm:ItemGroupDef[@Name='DM']
 (: and the location of the DM dataset :)
-let $dmdatasetlocation := $dmitemgroupdef/def:leaf/@xlink:href
+let $dmdatasetlocation := (
+	if($defineversion='2.1') then $dmitemgroupdef/def21:leaf/@xlink:href
+	else $dmitemgroupdef/def:leaf/@xlink:href
+)
 let $dmdatasetdoc := doc(concat($base,$dmdatasetlocation))
 (: Get the SS (Subject Status) dataset and its location :)
 let $ssitemgroupdef := $definedoc//odm:ItemGroupDef[@Name='SS']
-let $ssdatasetlocation := $ssitemgroupdef/def:leaf/@xlink:href
-let $ssdatasetdoc := doc(concat($base,$ssdatasetlocation))
+let $ssdatasetlocation := (
+	if($defineversion='2.1') then $ssitemgroupdef/def21:leaf/@xlink:href
+	else $ssitemgroupdef/def:leaf/@xlink:href
+)
+let $ssdatasetdoc := (
+	if($ssdatasetlocation) then doc(concat($base,$ssdatasetlocation))
+	else ()
+)
 (: we need the OID of DTHDTC and of USUBJID in DM :)
 let $dmdthdtcoid := (
     for $a in $definedoc//odm:ItemDef[@Name='DTHDTC']/@OID 
@@ -73,6 +84,6 @@ for $record in $ssdatasetdoc[$ssdatasetlocation]//odm:ItemGroupData[odm:ItemData
     let $dthdtc := $dmrecord/odm:ItemData[@ItemOID=$dmdthdtcoid]/@Value
     (: SSDTC >= DM.DTHDTC :)
     where $ssdtc castable as xs:date and $dthdtc castable as xs:date and not(xs:date($ssdtc) >= xs:date($dthdtc))
-    return <error rule="CG0171" variable="SSDTC" dataset="SS" recordnumber="{data($recnumss)}" rulelastupdate="2020-06-14">SSDTC={data($ssdtc)} is not before or equal to DM.DTHDTC={data($dthdtc)} for SSSTRESC='DEAD'</error>			
+    return <error rule="CG0171" variable="SSDTC" dataset="SS" recordnumber="{data($recnumss)}" rulelastupdate="2020-08-04">SSDTC={data($ssdtc)} is not before or equal to DM.DTHDTC={data($dthdtc)} for SSSTRESC='DEAD'</error>			
 		
 	

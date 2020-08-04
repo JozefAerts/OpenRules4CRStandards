@@ -14,18 +14,23 @@ See the License for the specific language governing permissions and limitations 
 (: Rule CG0109 - When no records in EX for Subject then DM.ACTARMCD in ('SCRNFAIL', 'NOTASSGN', 'NOTTRT')  :)
 xquery version "3.0";
 declare namespace def = "http://www.cdisc.org/ns/def/v2.0";
+declare namespace def21 = "http://www.cdisc.org/ns/def/v2.1";
 declare namespace odm="http://www.cdisc.org/ns/odm/v1.3";
 declare namespace data="http://www.cdisc.org/ns/Dataset-XML/v1.0";
 declare namespace xlink="http://www.w3.org/1999/xlink";
 (: "declare variable ... external" allows to pass $base and $define from an external programm :)
 declare variable $base external;
 declare variable $define external; 
+declare variable $defineversion external;
 (: let $base := '/db/fda_submissions/cdiscpilot01/' :)
 (: let $define := 'define_2_0.xml' :)
 let $definedoc := doc(concat($base,$define))
 (: get the DM dataset :)
 let $dmitemgroupdef := $definedoc//odm:ItemGroupDef[@Name='DM']
-let $dmdatasetlocation := $dmitemgroupdef/def:leaf/@xlink:href
+let $dmdatasetlocation := (
+	if($defineversion='2.1') then $dmitemgroupdef/def21:leaf/@xlink:href
+	else $dmitemgroupdef/def:leaf/@xlink:href
+)
 let $dmdatasetdoc := doc(concat($base,$dmdatasetlocation))
 (: get the OID of USUBJID in DM :)
 let $dmusubjidoid := (
@@ -41,7 +46,10 @@ let $actarmcdoid := (
 )
 (: get the EX dataset - we assume there is only one :)
 let $exitemgroupdef := $definedoc//odm:ItemGroupDef[@Name='EX']
-let $exdatasetlocation := $exitemgroupdef/def:leaf/@xlink:href
+let $exdatasetlocation := (
+	if($defineversion='2.1') then $exitemgroupdef/def21:leaf/@xlink:href
+	else $exitemgroupdef/def:leaf/@xlink:href
+)
 let $exdatasetdoc := doc(concat($base,$exdatasetlocation))
 (: get the OID of USUBJID in EX - this can be different from the one in DM :)
 let $exusubjidoid := (
@@ -61,6 +69,6 @@ for $record in $dmdatasetdoc//odm:ItemGroupData
     then ACTARMCD must be in ('SCRNFAIL', 'NOTASSGN', 'NOTTRT' :)
     where $excount=0 and not($actarmcd='SCRNFAIL' or $actarmcd='NOTASSGN' or $actarmcd='NOTTRT')
     return
-	<error rule="CG0109" dataset="DM" variable="ACTARMCD" recordnumber="{data($recnum)}" rulelastupdate="2020-06-14">No records were found for USUBJID={data($usubjid)} in EX but ACTARMCD is not one of 'SCRNFAIL', 'NOTASSGN', 'NOTTRT'. The value found for ARCTARMCD='{data($actarmcd)}'</error>			
+	<error rule="CG0109" dataset="DM" variable="ACTARMCD" recordnumber="{data($recnum)}" rulelastupdate="2020-08-04">No records were found for USUBJID={data($usubjid)} in EX but ACTARMCD is not one of 'SCRNFAIL', 'NOTASSGN', 'NOTTRT'. The value found for ARCTARMCD='{data($actarmcd)}'</error>			
 	
 	

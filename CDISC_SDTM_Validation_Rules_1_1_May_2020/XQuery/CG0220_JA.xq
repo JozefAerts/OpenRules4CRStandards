@@ -16,17 +16,22 @@ Study Day of Start (--STDY) variable value should be populated as defined by CDI
 :)
 xquery version "3.0";
 declare namespace def = "http://www.cdisc.org/ns/def/v2.0";
+declare namespace def21 = "http://www.cdisc.org/ns/def/v2.1";
 declare namespace odm="http://www.cdisc.org/ns/odm/v1.3";
 declare namespace data="http://www.cdisc.org/ns/Dataset-XML/v1.0";
 declare namespace xlink="http://www.w3.org/1999/xlink";
 (: "declare variable ... external" allows to pass $base and $define from an external programm :)
 declare variable $base external;
 declare variable $define external; 
+declare variable $defineversion external;
 (: let $base := '/db/fda_submissions/cdisc01/' :)
 (: let $define := 'define2-0-0-example-sdtm.xml' :)
 let $definedoc := doc(concat($base,$define))
 (: Get the location of the DM dataset :)
-let $dmdataset := doc(concat($base,$define))//odm:ItemGroupDef[@Name='DM']/def:leaf/@xlink:href
+let $dmdataset := (
+	if($defineversion='2.1') then $definedoc//odm:ItemGroupDef[@Name='DM']/def21:leaf/@xlink:href
+	else $definedoc//odm:ItemGroupDef[@Name='DM']/def:leaf/@xlink:href
+)
 let $dmdatasetlocation := concat($base,$dmdataset)
 (: get the OID of the RFSTDTC variable :)
 let $rfstdtcoid := (
@@ -41,10 +46,16 @@ let $dmusubjidoid := (
         return $a  
 )
 (: iterate over all the selected datasets :)
-for $datasetdef in doc(concat($base,$define))//odm:ItemGroupDef[not(@Name='DM')]
+for $datasetdef in $definedoc//odm:ItemGroupDef[not(@Name='DM')]
     let $name := $datasetdef/@Name
-    let $datasetname := $datasetdef/def:leaf/@xlink:href
-    let $datasetlocation := concat($base,$datasetname)
+	let $datasetname := (
+		if($defineversion='2.1') then $datasetdef/def21:leaf/@xlink:href
+		else $datasetdef/def:leaf/@xlink:href
+	)
+	let $datasetdoc := (
+		if($datasetname) then doc(concat($base,$datasetname))
+		else ()
+	)
     (: Get the OIDs of the --DY and --DTC variables  :)
     let $stdyoid := (
         for $a in $definedoc//odm:ItemDef[ends-with(@Name,'STDY') and string-length(@Name)=6]/@OID 
@@ -64,7 +75,7 @@ for $datasetdef in doc(concat($base,$define))//odm:ItemGroupDef[not(@Name='DM')]
         where $a = $datasetdef/odm:ItemRef/@ItemOID
         return $a
     )
-    for $record in doc($datasetlocation)//odm:ItemGroupData[odm:ItemData[@ItemOID=$stdtcoid]]
+    for $record in $datasetdoc//odm:ItemGroupData[odm:ItemData[@ItemOID=$stdtcoid]]
         let $recnum := $record/@data:ItemGroupDataSeq
         (: get the USUBJID value :)
         let $usubjidvalue := $record/odm:ItemData[@ItemOID=$usubjidoid]/@Value
@@ -102,6 +113,6 @@ for $datasetdef in doc(concat($base,$define))//odm:ItemGroupDef[not(@Name='DM')]
         )
         (: before comparing, also check whether the submitted value is really an integer :)
         where $stdyvalue castable as xs:integer and $stdycalculatedfda and $stdyvalue and not($stdycalculatedfda = $stdyvalue)
-        return <error dataset="{data($name)}" variable="{data($stdyname)}" rule="CG0220" rulelastupdate="2020-06-15" recordnumber="{data($recnum)}">Invalid value for {data($stdyname)}, calculated value={data($stdycalculatedfda)}, observed value={data($stdyvalue)}, in dataset {data($name)} </error>		
+        return <error dataset="{data($name)}" variable="{data($stdyname)}" rule="CG0220" rulelastupdate="2020-08-04" recordnumber="{data($recnum)}">Invalid value for {data($stdyname)}, calculated value={data($stdycalculatedfda)}, observed value={data($stdyvalue)}, in dataset {data($name)} </error>		
 		
 	

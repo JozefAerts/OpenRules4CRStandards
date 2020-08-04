@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and limitations 
 
 (: Rule CG0020: coded Value must be in the associated codelist (if any) or have the value 'MULTIPLE' :)
 declare namespace def = "http://www.cdisc.org/ns/def/v2.0";
+declare namespace def21 = "http://www.cdisc.org/ns/def/v2.1";
 declare namespace odm="http://www.cdisc.org/ns/odm/v1.3";
 declare namespace data="http://www.cdisc.org/ns/Dataset-XML/v1.0";
 declare namespace xlink="http://www.w3.org/1999/xlink";
@@ -25,6 +26,7 @@ declare function functx:is-value-in-sequence
 (: "declare variable ... external" allows to pass $base and $define from an external programm :)
 declare variable $base external;
 declare variable $define external;
+declare variable $defineversion external;
 (: find all dataset definitions  :)
 (: let $base := 'LZZT_SDTM_Dataset-XML/' :)
 (: let $define := 'define_2_0.xml' :)
@@ -33,8 +35,14 @@ let $definedoc := doc(concat($base,$define))
 for $itemgroupdef in $definedoc//odm:ItemGroupDef
     let $name := $itemgroupdef/@Name
     (: get the location of the dataset and document :)
-    let $datasetlocation := $itemgroupdef/def:leaf/@xlink:href
-    let $datasetdoc := doc(concat($base,$datasetlocation))
+	let $datasetlocation := (
+		if($defineversion='2.1') then $itemgroupdef/def21:leaf/@xlink:href
+		else $itemgroupdef/def:leaf/@xlink:href
+	)
+    let $datasetdoc := (
+		if($datasetlocation) then doc(concat($base,$datasetlocation))
+		else ()
+	)
     (: get the OIDs of the coded variables for this dataset.
     We currently still need to exclude "External" CodeLists as long as they do not have a RESTful WS available,
     and as long as ODM/Dataset-XML does not support RESTful web services :)
@@ -59,6 +67,6 @@ for $itemgroupdef in $definedoc//odm:ItemGroupDef
             let $allowedvalues := $definedoc//odm:CodeList[not(odm:ExternalCodeList)][@OID=$codelistoid]/odm:*/@CodedValue
             (: the value must be one of the coded values OR 'MULTIPLE' :)
             where count($allowedvalues) > 0 and not(functx:is-value-in-sequence($value,$allowedvalues)) and not($value='MULTIPLE')
-            return <error rule="CG0020" dataset="{data($name)}" variable="{data($varname)}" recordnumber="{data($recnum)}" rulelastupdate="2020-06-08">Value for variable {data($varname)}: value {data($value)} not found in associated codelist {data($codelistoid)} and is not 'MULTIPLE'</error>						
+            return <error rule="CG0020" dataset="{data($name)}" variable="{data($varname)}" recordnumber="{data($recnum)}" rulelastupdate="2020-08-04">Value for variable {data($varname)}: value {data($value)} not found in associated codelist {data($codelistoid)} and is not 'MULTIPLE'</error>						
     		
 	

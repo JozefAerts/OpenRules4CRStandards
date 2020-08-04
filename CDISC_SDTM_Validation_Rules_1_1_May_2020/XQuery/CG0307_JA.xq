@@ -14,19 +14,24 @@ See the License for the specific language governing permissions and limitations 
 (: Rule CG0307 - TSPARM and TSPARMCD have a one-to-one relationship :)
 xquery version "3.0";
 declare namespace def = "http://www.cdisc.org/ns/def/v2.0";
+declare namespace def21 = "http://www.cdisc.org/ns/def/v2.1";
 declare namespace odm="http://www.cdisc.org/ns/odm/v1.3";
 declare namespace data="http://www.cdisc.org/ns/Dataset-XML/v1.0";
 declare namespace xlink="http://www.w3.org/1999/xlink";
 (: "declare variable ... external" allows to pass $base and $define from an external programm :)
 declare variable $base external;
 declare variable $define external; 
+declare variable $defineversion external;
 (: let $base := '/db/fda_submissions/cdiscpilot01/' :)
 (: let $define := 'define_2_0.xml' :)
 let $definedoc := doc(concat($base,$define)) 
 (: iterate over all TS datasets - there should only be one :)
 for $datasetdef in $definedoc//odm:ItemGroupDef[@Name='TS']
     let $name := $datasetdef/@Name
-    let $datasetname := $datasetdef/def:leaf/@xlink:href
+	let $datasetname := (
+		if($defineversion='2.1') then $datasetdef/def21:leaf/@xlink:href
+		else $datasetdef/def:leaf/@xlink:href
+	)
     let $datasetlocation:= concat($base,$datasetname)
     let $datasetdoc := doc($datasetlocation)
     (: and get the OIDs of TSPARM and TSPARMCD :)

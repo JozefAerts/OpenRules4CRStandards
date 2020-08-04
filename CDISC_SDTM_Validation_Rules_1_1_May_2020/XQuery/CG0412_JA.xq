@@ -14,18 +14,23 @@ See the License for the specific language governing permissions and limitations 
 (: Rule CG0412 - When DM.ACTARMCD not in ('SCRNFAIL', 'NOTASSGN', 'NOTTRT') then Subject records > 0 in DS  :)
 xquery version "3.0";
 declare namespace def = "http://www.cdisc.org/ns/def/v2.0";
+declare namespace def21 = "http://www.cdisc.org/ns/def/v2.1";
 declare namespace odm="http://www.cdisc.org/ns/odm/v1.3";
 declare namespace data="http://www.cdisc.org/ns/Dataset-XML/v1.0";
 declare namespace xlink="http://www.w3.org/1999/xlink";
 (: "declare variable ... external" allows to pass $base and $define from an external programm :)
 declare variable $base external;
 declare variable $define external;
+declare variable $defineversion external;
 (: let $base := '/db/fda_submissions/cdiscpilot01/' :)
 (: let $define := 'define_2_0.xml' :)
 let $definedoc := doc(concat($base,$define)) 
 (: get the DM dataset :)
 let $dmitemgroupdef := $definedoc//odm:ItemGroupDef[@Name='DM']
-let $dmdatasetlocation := $dmitemgroupdef/def:leaf/@xlink:href
+let $dmdatasetlocation := (
+	if($defineversion='2.1') then $dmitemgroupdef/def21:leaf/@xlink:href
+	else $dmitemgroupdef/def:leaf/@xlink:href
+)
 let $dmdatasetdoc := doc(concat($base,$dmdatasetlocation))
 (: get the OID of USUBJID and ACTARMCD :)
 let $dmusubjidoid := (
@@ -40,7 +45,10 @@ let $dmactarmcdoid := (
 )
 (: get the DS dataset :)
 let $dsitemgroupdef := $definedoc//odm:ItemGroupDef[@Name='DS']
-let $dsdatasetlocation := $dsitemgroupdef/def:leaf/@xlink:href
+let $dsdatasetlocation := (
+	if($defineversion='2.1') then $dsitemgroupdef/def21:leaf/@xlink:href
+	else $dsitemgroupdef/def:leaf/@xlink:href
+)
 let $dsdatasetdoc := (
 	if($dsdatasetlocation) then doc(concat($base,$dsdatasetlocation))
 	else ()
@@ -63,7 +71,7 @@ for $record in $dmdatasetdoc//odm:ItemGroupData
     if ($actarmcd != 'SCRNFAIL' and $actarmcd != 'NOTASSGN' and $actarmcd != 'NOTTRT') then
         let $count := count($dsdatasetdoc//odm:ItemGroupData[odm:ItemData[@ItemOID=$dsusubjidoid and @Value=$dmusubjid]])
         where $count = 0
-        return <error rule="CG0412" dataset="DS" rulelastupdate="2020-06-18" recordnumber="{data($recnum)}">No records found for USUBJID={data($dmusubjid)} and ACTARMCD='{data($actarmcd)}' in DS</error>			
+        return <error rule="CG0412" dataset="DS" rulelastupdate="2020-08-04" recordnumber="{data($recnum)}">No records found for USUBJID={data($dmusubjid)} and ACTARMCD='{data($actarmcd)}' in DS</error>			
     else ()  (: ACTARMC is one of 'SCRNFAIL', 'NOTASSGN', 'NOTTRT' - nothing to do :)
     (: 'print' the error messages :)
     return $errormessages			

@@ -14,6 +14,7 @@ See the License for the specific language governing permissions and limitations 
 (: Rule CG0147 - When EX records present for subject then RFXENDTC = latest value of EX.EXSTDTC or EX.EXENDTC :)
 xquery version "3.0";
 declare namespace def = "http://www.cdisc.org/ns/def/v2.0";
+declare namespace def21 = "http://www.cdisc.org/ns/def/v2.1";
 declare namespace odm="http://www.cdisc.org/ns/odm/v1.3";
 declare namespace data="http://www.cdisc.org/ns/Dataset-XML/v1.0";
 declare namespace xlink="http://www.w3.org/1999/xlink";
@@ -21,6 +22,7 @@ declare namespace functx = "http://www.functx.com";
 (: "declare variable ... external" allows to pass $base and $define from an external programm :)
 declare variable $base external; 
 declare variable $define external; 
+declare variable $defineversion external;
 (: sorting function - also sorts dates :)
 declare function functx:sort
   ( $seq as item()* )  as item()* {
@@ -34,7 +36,10 @@ let $definedoc := doc(concat($base,$define))
 (: Get the DM dataset :)
 let $dmitemgroupdef := $definedoc//odm:ItemGroupDef[@Name='DM']
 (: and the location of the DM dataset :)
-let $dmdatasetlocation := $dmitemgroupdef/def:leaf/@xlink:href
+let $dmdatasetlocation := (
+	if($defineversion='2.1') then $dmitemgroupdef/def21:leaf/@xlink:href
+	else $dmitemgroupdef/def:leaf/@xlink:href
+)
 let $dmdatasetdoc := doc(concat($base,$dmdatasetlocation))
 (: get the OID of RFXENDTC in DM :)
 let $rfxendtcoid := (
@@ -50,7 +55,10 @@ let $dmusubjidoid := (
 )
 (: get the EX dataset and its location :)
 let $exitemgroupdef := $definedoc//odm:ItemGroupDef[@Name='EX']
-let $exdatasetlocation := $exitemgroupdef/def:leaf/@xlink:href
+let $exdatasetlocation := (
+	if($defineversion='2.1') then $exitemgroupdef/def21:leaf/@xlink:href
+	else $exitemgroupdef/def:leaf/@xlink:href
+)
 let $exdatasetdoc := doc(concat($base,$exdatasetlocation))
 (: and the OID of EXSTDTC and of EXENDTC :)
 let $exstdtcoid := (
@@ -81,6 +89,6 @@ for $dmrecord in $dmdatasetdoc//odm:ItemGroupData[odm:ItemData[@ItemOID=$rfxendt
     let $latestexdtc := functx:sort($exdtcvalues)[last()]
     (: RFXENDTC = latest value of EX.EXSTDTC or EX.EXENDTC :)
     where not($rfxendtc=$latestexdtc)
-    return <error rule="CG0147" variable="RFXENDTC" dataset="DM" rulelastupdate="2020-06-14" recordnumber="{data($recnum)}">RFXENDTC='{data($rfxendtc)}' does not correspond to the latest exposure data EXSTDTC/EXENDTC='{data($latestexdtc)}' value</error>		
+    return <error rule="CG0147" variable="RFXENDTC" dataset="DM" rulelastupdate="2020-08-04" recordnumber="{data($recnum)}">RFXENDTC='{data($rfxendtc)}' does not correspond to the latest exposure data EXSTDTC/EXENDTC='{data($latestexdtc)}' value</error>		
 		
 	

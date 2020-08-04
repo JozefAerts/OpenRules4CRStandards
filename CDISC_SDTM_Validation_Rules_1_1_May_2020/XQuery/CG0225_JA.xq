@@ -14,6 +14,7 @@ See the License for the specific language governing permissions and limitations 
 (: Rule CG0225  - When VISITNUM is NOT in TV.VISITNUM then VISITDY = null :)
 xquery version "3.0";
 declare namespace def = "http://www.cdisc.org/ns/def/v2.0";
+declare namespace def21 = "http://www.cdisc.org/ns/def/v2.1";
 declare namespace odm="http://www.cdisc.org/ns/odm/v1.3";
 declare namespace data="http://www.cdisc.org/ns/Dataset-XML/v1.0";
 declare namespace xlink="http://www.w3.org/1999/xlink"; 
@@ -27,12 +28,16 @@ declare function functx:is-value-in-sequence
 (: "declare variable ... external" allows to pass $base and $define from an external programm :)
 declare variable $base external;
 declare variable $define external; 
+declare variable $defineversion external;
 (: declare variable $domain external; :)
 (: let $base := '/db/fda_submissions/cdisc01/'  :)
 (: let $define := 'define2-0-0-example-sdtm.xml' :)
 let $definedoc := doc(concat($base,$define))
 (: Get the location of the TV dataset :)
-let $tvdataset := $definedoc//odm:ItemGroupDef[@Name='TV']/def:leaf/@xlink:href
+let $tvdataset := (
+	if($defineversion='2.1') then $definedoc//odm:ItemGroupDef[@Name='TV']/def21:leaf/@xlink:href
+	else $definedoc//odm:ItemGroupDef[@Name='TV']/def:leaf/@xlink:href
+)
 let $tvdatasetlocation := concat($base,$tvdataset)
 let $tvdatasetdoc := doc($tvdatasetlocation)
 (: get the OID of the VISITNUM variable :)
@@ -58,7 +63,10 @@ for $itemgroupdef in $definedoc//odm:ItemGroupDef[not(@Name='TV')]
         return $a
     )
     (: and the location of the dataset :)
-    let $datasetlocation := $itemgroupdef/def:leaf/@xlink:href
+	let $datasetlocation := (
+		if($defineversion='2.1') then $itemgroupdef/def21:leaf/@xlink:href
+		else $itemgroupdef/def:leaf/@xlink:href
+	)
     let $datasetdoc := doc(concat($base,$datasetlocation))
     (: iterate over all the records in the dataset for which there is a VISITNUM,
     but only when VISITDY and VISITNUM have been defined for this dataset :)
@@ -69,6 +77,6 @@ for $itemgroupdef in $definedoc//odm:ItemGroupDef[not(@Name='TV')]
         let $visitdy := $record/odm:ItemData[@ItemOID=$visitdyoid]/@Value
         (: When VISITNUM is NOT in TV.VISITNUM then VISITDY = null :)
         where not(functx:is-value-in-sequence($visitnum,$tvvisitnums)) and $visitdy (: the latter states that VISITDY is populated :)
-        return <error rule="CG0225" dataset="{data($name)}" variable="VISITDY" rulelastupdate="2020-06-15" recordnumber="{data($recnum)}">VISITDY={data($visitdy)} is expected to be null as VISITNUM={data($visitnum)} is not present in TV</error>			
+        return <error rule="CG0225" dataset="{data($name)}" variable="VISITDY" rulelastupdate="2020-08-04" recordnumber="{data($recnum)}">VISITDY={data($visitdy)} is expected to be null as VISITNUM={data($visitnum)} is not present in TV</error>			
 		
 	
