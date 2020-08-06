@@ -14,6 +14,7 @@ See the License for the specific language governing permissions and limitations 
 (: Rule SD1115 - Missing TS dataset :)
 xquery version "3.0";
 declare namespace def = "http://www.cdisc.org/ns/def/v2.0";
+declare namespace def21 = "http://www.cdisc.org/ns/def/v2.1";
 declare namespace odm="http://www.cdisc.org/ns/odm/v1.3";
 declare namespace data="http://www.cdisc.org/ns/Dataset-XML/v1.0";
 declare namespace xlink="http://www.w3.org/1999/xlink";
@@ -21,10 +22,14 @@ declare namespace request="http://exist-db.org/xquery/request";
 (: "declare variable ... external" allows to pass $base and $define from an external programm :)
 declare variable $base external;
 declare variable $define external;
+declare variable $defineversion external;
 (: let $base := '/db/fda_submissions/cdisc01/' :)
 (: let $define := 'define2-0-0-example-sdtm.xml' :)
 (: get the location of the TS dataset :)
-let $tsdatasetname := doc(concat($base,$define))//odm:ItemGroupDef[@Name='TS']/def:leaf/@xlink:href
+let $tsdatasetname := (
+	if($defineversion='2.1') then doc(concat($base,$define))//odm:ItemGroupDef[@Name='TS']/def21:leaf/@xlink:href
+	else doc(concat($base,$define))//odm:ItemGroupDef[@Name='TS']/def:leaf/@xlink:href
+)
 let $tsdatasetlocation := concat($base,$tsdatasetname)
 (: we now have the location of the dataset, check whether it is available there :)
 where (not(doc-available($tsdatasetlocation)))

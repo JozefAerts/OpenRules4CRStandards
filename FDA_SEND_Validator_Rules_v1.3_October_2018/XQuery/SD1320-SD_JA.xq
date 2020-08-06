@@ -16,39 +16,47 @@ Character Result/Finding in Std Format (--STRESC) value should not be NULL, when
 :)
 xquery version "3.0";
 declare namespace def = "http://www.cdisc.org/ns/def/v2.0";
+declare namespace def21 = "http://www.cdisc.org/ns/def/v2.1";
 declare namespace odm="http://www.cdisc.org/ns/odm/v1.3";
 declare namespace data="http://www.cdisc.org/ns/Dataset-XML/v1.0";
 declare namespace xlink="http://www.w3.org/1999/xlink";
 (: "declare variable ... external" allows to pass $base and $define from an external programm :)
 declare variable $base external;
 declare variable $define external; 
+declare variable $defineversion external;
 declare variable $datasetname external;
 (: let $base := '/db/fda_submissions/cdisc01/'
 let $define := 'define2-0-0-example-sdtm.xml' :)
-
+let $definedoc := doc(concat($base,$define))
 (: iterate over all the FINDINGS datasets :)
-for $dataset in doc(concat($base,$define))//odm:ItemGroupDef[upper-case(@def:Class)='FINDINGS'][@Name=$datasetname]
+for $dataset in $definedoc//odm:ItemGroupDef[upper-case(@def:Class)='FINDINGS' or upper-case(./def21:Class/@Name)='FINDINGS'][@Name=$datasetname]
     let $name := $dataset/@Name
-    let $dsname := $dataset/def:leaf/@xlink:href
-    let $datasetlocation := concat($base,$dsname)
+	let $dsname := (
+		if($defineversion='2.1') then $dataset/def21:leaf/@xlink:href
+		else $dataset/def:leaf/@xlink:href
+	)
+    let $datasetdoc := (
+		if($dsname) then doc(concat($base,$dsname))
+		else ()
+	)
     (: Find the OID of the --STAT variable  :)
     let $statoid := (
-        for $a in doc(concat($base,$define))//odm:ItemDef[ends-with(@Name,'STAT')]/@OID 
-        where $a = doc(concat($base,$define))//odm:ItemGroupDef[@Name=$name]/odm:ItemRef/@ItemOID
+        for $a in $definedoc//odm:ItemDef[ends-with(@Name,'STAT')]/@OID 
+        where $a = $definedoc//odm:ItemGroupDef[@Name=$name]/odm:ItemRef/@ItemOID
         return $a
     )
     (: and the name :)
-    let $statname := doc(concat($base,$define))//odm:ItemDef[@OID=$statoid]/@Name
+    let $statname := $definedoc//odm:ItemDef[@OID=$statoid]/@Name
     (: Find the OID and the name of the --STRESC variable :)
     let $strescoid := (
-        for $a in doc(concat($base,$define))//odm:ItemDef[ends-with(@Name,'STRESC')]/@OID 
-        where $a = doc(concat($base,$define))//odm:ItemGroupDef[@Name=$name]/odm:ItemRef/@ItemOID
+        for $a in $definedoc//odm:ItemDef[ends-with(@Name,'STRESC')]/@OID 
+        where $a = $definedoc//odm:ItemGroupDef[@Name=$name]/odm:ItemRef/@ItemOID
         return $a
     )
-    let $strescname := doc(concat($base,$define))//odm:ItemDef[@OID=$strescoid]/@Name
+    let $strescname := $definedoc//odm:ItemDef[@OID=$strescoid]/@Name
     (: iterate over all the records, but only if there really is a --STAT variable (as it is permissible) :)
     (: TODO: to speed things up, an "IF" is needed here :)
-    for $record in doc($datasetlocation)//odm:ItemGroupData
+    for $record in $datasetdoc//odm:ItemGroupData
         let $recnum := $record/@data:ItemGroupDataSeq
         (: Get the value of the DRVFL variable :)
         let $statvalue := $record/odm:ItemData[@ItemOID=$statoid]/@Value

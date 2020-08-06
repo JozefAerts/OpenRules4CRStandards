@@ -15,6 +15,7 @@ See the License for the specific language governing permissions and limitations 
 The value of a Short Name of Measurement, Test or Examination (--TESTCD) variable should be limited to 8 characters, cannot start with a number, and cannot contain characters other than letters in upper case, numbers, or underscores :)
 xquery version "3.0";
 declare namespace def = "http://www.cdisc.org/ns/def/v2.0";
+declare namespace def21 = "http://www.cdisc.org/ns/def/v2.1";
 declare namespace odm="http://www.cdisc.org/ns/odm/v1.3";
 declare namespace data="http://www.cdisc.org/ns/Dataset-XML/v1.0";
 declare namespace xlink="http://www.w3.org/1999/xlink";
@@ -22,6 +23,7 @@ declare namespace functx = "http://www.functx.com";
 (: "declare variable ... external" allows to pass $base and $define from an external programm :)
 declare variable $base external;
 declare variable $define external;
+declare variable $defineversion external;
 declare function functx:is-value-in-sequence
   ( $value as xs:anyAtomicType? ,
     $seq as xs:anyAtomicType* )  as xs:boolean {
@@ -32,23 +34,29 @@ declare function functx:is-value-in-sequence
 (: let $define := 'define_2_0.xml' :)
 (: let $base := '/db/fda_submissions/cdisc01/' :)
 (: let $define := 'define2-0-0-example-sdtm.xml' :)
-
+let $definedoc := doc(concat($base,$define))
 let $numbers := ("0","1","2","3","4","5","6","7","8","9")
 
 (: iterate over all datasets in the define.xml :)
-for $itemgroup in doc(concat($base,$define))//odm:ItemGroupDef[upper-case(@def:Class)='FINDINGS']
+for $itemgroup in $definedoc//odm:ItemGroupDef[upper-case(@def:Class)='FINDINGS' or upper-case(./def21:Class/@Name)='FINDINGS']
 	let $itemgroupdefname := $itemgroup/@Name
     (: get the dataset name and location :)
-    let $datasetname := $itemgroup/def:leaf/@xlink:href
-    let $dataset := concat($base,$datasetname)
+	let $datasetname := (
+		if($defineversion='2.1') then $itemgroup/def21:leaf/@xlink:href
+		else $itemgroup/def:leaf/@xlink:href
+	)
+    let $datasetdoc := (
+		if($datasetname) then doc(concat($base,$datasetname))
+		else ()
+	)
     (: get the OID of the "--TEST" variable :)
     let $testoid := (
-    for $a in doc(concat($base,$define))//odm:ItemDef[ends-with(@Name,'TESTCD')]/@OID 
+    for $a in $definedoc//odm:ItemDef[ends-with(@Name,'TESTCD')]/@OID 
     where $a = $itemgroup/odm:ItemRef/@ItemOID 
     return $a 
     )
-    let $testname := doc(concat($base,$define))//odm:ItemDef[@OID=$testoid]/@Name
-    for $record in doc($dataset)//odm:ItemGroupData[odm:ItemData[@ItemOID=$testoid]]
+    let $testname := $definedoc//odm:ItemDef[@OID=$testoid]/@Name
+    for $record in $datasetdoc//odm:ItemGroupData[odm:ItemData[@ItemOID=$testoid]]
         let $recnum := $record/@data:ItemGroupDataSeq
         let $value := $record/odm:ItemData[@ItemOID=$testoid]/@Value
         let $firstchar := substring($value,1,1)

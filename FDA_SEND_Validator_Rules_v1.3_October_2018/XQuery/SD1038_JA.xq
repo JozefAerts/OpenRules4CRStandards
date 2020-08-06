@@ -17,27 +17,36 @@ i.e. combination of TSSEQ and TSPARMCD must be unique :)
 (:can be made much more faster using "GROUP BY" :)
 xquery version "3.0";
 declare namespace def = "http://www.cdisc.org/ns/def/v2.0";
+declare namespace def21 = "http://www.cdisc.org/ns/def/v2.1";
 declare namespace odm="http://www.cdisc.org/ns/odm/v1.3";
 declare namespace data="http://www.cdisc.org/ns/Dataset-XML/v1.0";
 declare namespace xlink="http://www.w3.org/1999/xlink";
 (: "declare variable ... external" allows to pass $base and $define from an external programm :)
 declare variable $base external;
 declare variable $define external;
+declare variable $defineversion external;
 (: let $base := '/db/fda_submissions/cdisc01/' :)
 (: let $define := 'define2-0-0-example-sdtm.xml' :)
+let $definedoc := doc(concat($base,$define))
 (: get the OID of the TSSEQ and TSPARMCD variables in the define.xml :)
-let $tsseq := doc(concat($base,$define))//odm:ItemDef[@Name='TSSEQ']/@OID
-let $tsparmcd := doc(concat($base,$define))//odm:ItemDef[@Name='TSPARMCD']/@OID
+let $tsseq := $definedoc//odm:ItemDef[@Name='TSSEQ']/@OID
+let $tsparmcd := $definedoc//odm:ItemDef[@Name='TSPARMCD']/@OID
 (: get the TS dataset :)
-let $tsdatasetname := doc(concat($base,$define))//odm:ItemGroupDef[@Name='TS']/def:leaf/@xlink:href
-let $tsdataset := concat($base,$tsdatasetname)
+let $tsdatasetname := (
+	if($defineversion='2.1') then doc(concat($base,$define))//odm:ItemGroupDef[@Name='TS']/def21:leaf/@xlink:href
+	else doc(concat($base,$define))//odm:ItemGroupDef[@Name='TS']/def:leaf/@xlink:href
+)
+let $tsdatasetdoc := (
+	if($tsdatasetname) then doc(concat($base,$tsdatasetname))
+	else ()
+)
 (: now iterate over the TS records :)
-for $d in doc($tsdataset)//odm:ItemGroupData
+for $d in $tsdatasetdoc//odm:ItemGroupData
     let $seqvalue := $d/odm:ItemData[@ItemOID=$tsseq]/@Value
     let $parmcdvalue := $d/odm:ItemData[@ItemOID=$tsparmcd]/@Value
     let $recnum := $d/@data:ItemGroupDataSeq
     (: and count the one with the (same) combination of TSSEQ and TSPARMCD in the dataset :)
     (: additional possibility to speed up: add [@data:ItemGroupDataSeq > $recnum] :)
-    let $count := count(doc($tsdataset)//odm:ItemGroupData[odm:ItemData[@ItemOID=$tsseq and @Value=$seqvalue] and odm:ItemData[@ItemOID=$tsparmcd and @Value=$parmcdvalue]])
+    let $count := count($tsdatasetdoc//odm:ItemGroupData[odm:ItemData[@ItemOID=$tsseq and @Value=$seqvalue] and odm:ItemData[@ItemOID=$tsparmcd and @Value=$parmcdvalue]])
     where $count > 1
     return <error rule="SD1038" dataset="TS" rulelastupdate="2019-08-29" recordnumber="{data($recnum)}">Non-unique value for TSSEQ variable within TSPARMCD - combination of TSSEQ={data($seqvalue)} and TSPARMCD={data($parmcdvalue)} occurs {data($count)} times</error>

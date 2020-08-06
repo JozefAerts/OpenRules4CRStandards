@@ -14,6 +14,7 @@ See the License for the specific language governing permissions and limitations 
 (: Rule SD0060: Variable in dataset is not present in define.xml :)
 xquery version "3.0";
 declare namespace def = "http://www.cdisc.org/ns/def/v2.0";
+declare namespace def21 = "http://www.cdisc.org/ns/def/v2.1";
 declare namespace odm="http://www.cdisc.org/ns/odm/v1.3";
 declare namespace data="http://www.cdisc.org/ns/Dataset-XML/v1.0";
 declare namespace xlink="http://www.w3.org/1999/xlink";
@@ -27,13 +28,18 @@ declare function functx:is-value-in-sequence
 (: "declare variable ... external" allows to pass $base and $define from an external programm :)
 declare variable $base external;
 declare variable $define external;
+declare variable $defineversion external;
 (: let $base := '/db/fda_submissions/cdisc01/' 
 let $define := 'define2-0-0-example-sdtm.xml' :)
+let $definedoc := doc(concat($base,$define))
 (: iterate over all the dataset definitions in the define.xml :)
-for $datasetdef in doc(concat($base,$define))//odm:ItemGroupDef
+for $datasetdef in $definedoc//odm:ItemGroupDef
     (: get the name and the dataset location and the dataset document :)
     let $datasetname := $datasetdef/@Name
-    let $datasetlocation := $datasetdef/def:leaf/@xlink:href
+	let $datasetlocation := (
+		if($defineversion='2.1') then $datasetdef/def21:leaf/@xlink:href
+		else $datasetdef/def:leaf/@xlink:href
+	)
     let $datasetdoc := doc(concat($base,$datasetlocation))
     (: get all the OIDs of the variables in the dataset definition :)
     let $varoids := $datasetdef/odm:ItemRef/@ItemOID

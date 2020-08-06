@@ -15,6 +15,7 @@ See the License for the specific language governing permissions and limitations 
 End Date/Time of Treatment (EXENDTC) should be less than or equal to the Start Date/Time of the latest Disposition Event (DSSTDTC) :)
 xquery version "3.0";
 declare namespace def = "http://www.cdisc.org/ns/def/v2.0";
+declare namespace def21 = "http://www.cdisc.org/ns/def/v2.1";
 declare namespace odm="http://www.cdisc.org/ns/odm/v1.3";
 declare namespace data="http://www.cdisc.org/ns/Dataset-XML/v1.0";
 declare namespace xlink="http://www.w3.org/1999/xlink";
@@ -22,40 +23,54 @@ declare namespace xs="http://www.w3.org/2001/XMLSchema";
 (: "declare variable ... external" allows to pass $base and $define from an external programm :)
 declare variable $base external;
 declare variable $define external;
+declare variable $defineversion external;
 (: let $base := '/db/fda_submissions/cdisc01/' :)
 (: let $define := 'define2-0-0-example-sdtm.xml' :)
+let $definedoc := doc(concat($base,$define))
 (: Get the DS dataset :)
-let $dsdatasetname := doc(concat($base,$define))//odm:ItemGroupDef[@Name='DS']/def:leaf/@xlink:href
-let $dsdataset := concat($base,$dsdatasetname)
+let $dsdatasetname := (
+	if($defineversion='2.1') then $definedoc//odm:ItemGroupDef[@Name='DS']/def21:leaf/@xlink:href
+	else $definedoc//odm:ItemGroupDef[@Name='DS']/def:leaf/@xlink:href
+)
+let $dsdatasetdoc := (
+	if($dsdatasetname) then doc(concat($base,$dsdatasetname))
+	else ()
+)
 (: and the OID of the USUBJID :) 
 let $dsusubjoid := (
-    for $a in doc(concat($base,$define))//odm:ItemDef[@Name='USUBJID']/@OID 
-    where $a = doc(concat($base,$define))//odm:ItemGroupDef[@Name='DS']/odm:ItemRef/@ItemOID
+    for $a in $definedoc//odm:ItemDef[@Name='USUBJID']/@OID 
+    where $a = $definedoc//odm:ItemGroupDef[@Name='DS']/odm:ItemRef/@ItemOID
     return $a
 )
 let $dsstdtcoid := (
-    for $a in doc(concat($base,$define))//odm:ItemDef[@Name='DSSTDTC']/@OID 
-    where $a = doc(concat($base,$define))//odm:ItemGroupDef[@Name='DS']/odm:ItemRef/@ItemOID
+    for $a in $definedoc//odm:ItemDef[@Name='DSSTDTC']/@OID 
+    where $a = $definedoc//odm:ItemGroupDef[@Name='DS']/odm:ItemRef/@ItemOID
     return $a
 )
 (: Get the EX dataset :)
-let $exdatasetname := doc(concat($base,$define))//odm:ItemGroupDef[@Name='EX']/def:leaf/@xlink:href
-let $exdataset := concat($base,$exdatasetname)
+let $exdatasetname := (
+	if($defineversion='2.1') then $definedoc//odm:ItemGroupDef[@Name='EX']/def21:leaf/@xlink:href
+	else $definedoc//odm:ItemGroupDef[@Name='EX']/def:leaf/@xlink:href
+)
+let $exdatasetdoc := (
+	if($exdatasetname) then doc(concat($base,$exdatasetname))
+	else ()
+)
 let $exusubjidoid := (
-    for $a in doc(concat($base,$define))//odm:ItemDef[@Name='USUBJID']/@OID 
-    where $a = doc(concat($base,$define))//odm:ItemGroupDef[@Name='EX']/odm:ItemRef/@ItemOID
+    for $a in $definedoc//odm:ItemDef[@Name='USUBJID']/@OID 
+    where $a = $definedoc//odm:ItemGroupDef[@Name='EX']/odm:ItemRef/@ItemOID
     return $a
 )
-let $exendtcoid := doc(concat($base,$define))//odm:ItemDef[@Name='EXENDTC']/@OID
+let $exendtcoid := $definedoc//odm:ItemDef[@Name='EXENDTC']/@OID
 (: iterate over all the records in the EX dataset :)
-for $exrecord in doc($exdataset)//odm:ItemGroupData
+for $exrecord in $exdatasetdoc//odm:ItemGroupData
     let $recnum := $exrecord/@data:ItemGroupDataSeq
     (: get als well the USUBJID as the EXENDTC :)
     let $exusubjidvalue := $exrecord/odm:ItemData[@ItemOID=$exusubjidoid]/@Value
     let $exendtcvalue := $exrecord/odm:ItemData[@ItemOID=$exendtcoid]/@Value
     (: now get the latest (maximal) value DSSTDTC in the DS dataset for this subject :)
-    (: let $lastdssdtcvalue := max(doc($dsdataset)//odm:ItemGroupData[odm:ItemData[@ItemOID=$dsusubjoid and @Value=$exusubjidvalue]]/odm:ItemData[@ItemOID=$dsstdtcoid]/@Value) :)
-    let $dssdtcvalues := doc($dsdataset)//odm:ItemGroupData[odm:ItemData[@ItemOID=$dsusubjoid and @Value=$exusubjidvalue]]/odm:ItemData[@ItemOID=$dsstdtcoid]/@Value
+    (: let $lastdssdtcvalue := max($dsdatasetdoc//odm:ItemGroupData[odm:ItemData[@ItemOID=$dsusubjoid and @Value=$exusubjidvalue]]/odm:ItemData[@ItemOID=$dsstdtcoid]/@Value) :)
+    let $dssdtcvalues := $dsdatasetdoc//odm:ItemGroupData[odm:ItemData[@ItemOID=$dsusubjoid and @Value=$exusubjidvalue]]/odm:ItemData[@ItemOID=$dsstdtcoid]/@Value
     (: get the latest DSSTDTC date :)
     let $latestdate := max(for $date in $dssdtcvalues return xs:date($date))
     (: and report an error when DSSTDTC before EXENDTC  :)

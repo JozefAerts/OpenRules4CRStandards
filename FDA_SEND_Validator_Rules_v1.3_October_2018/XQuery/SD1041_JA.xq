@@ -15,18 +15,22 @@ See the License for the specific language governing permissions and limitations 
  Applies to INTERVENTIONS, EVENTS, FINDINGS, TI :)
 xquery version "3.0";
 declare namespace def = "http://www.cdisc.org/ns/def/v2.0";
+declare namespace def21 = "http://www.cdisc.org/ns/def/v2.1";
 declare namespace odm="http://www.cdisc.org/ns/odm/v1.3";
 declare namespace data="http://www.cdisc.org/ns/Dataset-XML/v1.0";
 declare namespace xlink="http://www.w3.org/1999/xlink";
 (: "declare variable ... external" allows to pass $base and $define from an external programm :)
 declare variable $base external;
 declare variable $define external; 
+declare variable $defineversion external;
 (: let $base := '/db/fda_submissions/cdisc01/' 
 let $define := 'define2-0-0-example-sdtm.xml' :)
 (: get the define.xml document :)
 let $definedoc := doc(concat($base,$define))
 (: iterate over the dataset definitions in INTERVENTIONS, EVENTS, FINDINGS, TI :)
-for $datasetdef in $definedoc//odm:ItemGroupDef[upper-case(@def:Class)='INTERVENTIONS' or upper-case(@def:Class)='EVENTS' or upper-case(@def:Class)='FINDINGS' or @Domain='TI']
+for $datasetdef in $definedoc//odm:ItemGroupDef[upper-case(@def:Class)='INTERVENTIONS' or upper-case(@def:Class)='EVENTS' or upper-case(@def:Class)='FINDINGS' 
+		or upper-case(./def21:Class/@Name)='INTERVENTIONS' or upper-case(./def21:Class/@Name)='EVENTS' or upper-case(./def21:Class/@Name)='FINDINGS'
+		or @Domain='TI']
     (: get the name of the dataset :)
     let $name := $datasetdef/@Name
     (: get the OIDs of the --CAT and --SCAT variables :)
@@ -43,9 +47,15 @@ for $datasetdef in $definedoc//odm:ItemGroupDef[upper-case(@def:Class)='INTERVEN
     )
     let $scatname := $definedoc//odm:ItemDef[@OID=$scatoid]/@Name
     (: get the location of the dataset :)
-    let $datasetlocation := $datasetdef/def:leaf/@xlink:href
+	let $datasetlocation := (
+		if($defineversion='2.1') then $datasetdef/def21:leaf/@xlink:href
+		else $datasetdef/def:leaf/@xlink:href
+	)
     (: and the dataset document itself :)
-    let $datasetdoc := doc(concat($base,$datasetlocation))
+    let $datasetdoc := (
+		if($datasetlocation) then doc(concat($base,$datasetlocation))
+		else ()
+	)
     (: iterate over all the records in the dataset, at least when --CAT and --SCAT have been defined for the dataset :)
     for $record in $datasetdoc[$catoid and $scatoid]//odm:ItemGroupData
         let $recnum := $record/@data:ItemGroupDataSeq

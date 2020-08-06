@@ -15,35 +15,41 @@ See the License for the specific language governing permissions and limitations 
 Only applies to SENDIG 3.1, not to 3.0 :)
 xquery version "3.0";
 declare namespace def = "http://www.cdisc.org/ns/def/v2.0";
+declare namespace def21 = "http://www.cdisc.org/ns/def/v2.1";
 declare namespace odm="http://www.cdisc.org/ns/odm/v1.3";
 declare namespace data="http://www.cdisc.org/ns/Dataset-XML/v1.0";
 declare namespace xlink="http://www.w3.org/1999/xlink";
 (: "declare variable ... external" allows to pass $base and $define from an external programm :)
 declare variable $base external;
 declare variable $define external;
+declare variable $defineversion external;
 (: let $base := '/db/fda_submissions/cdisc01/' 
 let $define := 'define2-0-0-example-sdtm.xml' :)
+let $definedoc := doc(concat($base,$define))
 (: get the DM dataset and the OID of DM.RFXENDTC (Date/Time of Last Study Treatment)  :)
 let $dmdef := doc(concat($base,$define))//odm:ItemGroupDef[@Name='DM']
 (: and get the location and the DM document itself :)
-let $dmlocation := $dmdef/def:leaf/@xlink:href
+let $dmlocation := (
+	if($defineversion='2.1') then $dmdef/def21:leaf/@xlink:href
+	else $dmdef/def:leaf/@xlink:href
+)
 let $dmdoc := doc(concat($base,$dmlocation))
 (: we need the OID of USUBJID in DM :)
 let $dmusubjidoid := (
-    for $a in doc(concat($base,$define))//odm:ItemDef[@Name='USUBJID']/@OID 
-        where $a = doc(concat($base,$define))//odm:ItemGroupDef[@Name='DM']/odm:ItemRef/@ItemOID
+    for $a in $definedoc//odm:ItemDef[@Name='USUBJID']/@OID 
+        where $a = $definedoc//odm:ItemGroupDef[@Name='DM']/odm:ItemRef/@ItemOID
         return $a
 )
 (: and of RFXENDTC :)
 let $rfxendtcoid := (
-    for $a in doc(concat($base,$define))//odm:ItemDef[@Name='RFXENDTC']/@OID 
-        where $a = doc(concat($base,$define))//odm:ItemGroupDef[@Name='DM']/odm:ItemRef/@ItemOID
+    for $a in $definedoc//odm:ItemDef[@Name='RFXENDTC']/@OID 
+        where $a = $definedoc//odm:ItemGroupDef[@Name='DM']/odm:ItemRef/@ItemOID
         return $a
 )
 (: and of RFXSTDTC :)
 let $rfxstdtcoid := (
-    for $a in doc(concat($base,$define))//odm:ItemDef[@Name='RFXSTDTC']/@OID 
-        where $a = doc(concat($base,$define))//odm:ItemGroupDef[@Name='DM']/odm:ItemRef/@ItemOID
+    for $a in $definedoc//odm:ItemDef[@Name='RFXSTDTC']/@OID 
+        where $a = $definedoc//odm:ItemGroupDef[@Name='DM']/odm:ItemRef/@ItemOID
         return $a
 ) 
 (: iterate over all records in DM that have both RFXSTDTC and RFXENDTC :)

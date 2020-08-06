@@ -16,6 +16,7 @@ Variable Data Types in the dataset must match the variable data types described 
 :)
 xquery version "3.0";
 declare namespace def = "http://www.cdisc.org/ns/def/v2.0";
+declare namespace def21 = "http://www.cdisc.org/ns/def/v2.1";
 declare namespace odm="http://www.cdisc.org/ns/odm/v1.3";
 declare namespace data="http://www.cdisc.org/ns/Dataset-XML/v1.0";
 declare namespace xlink="http://www.w3.org/1999/xlink";
@@ -23,6 +24,7 @@ declare namespace functx = "http://www.functx.com";
 (: "declare variable ... external" allows to pass $base and $define from an external programm :)
 declare variable $base external;
 declare variable $define external;
+declare variable $defineversion external;
 declare variable $datasetname external;
 (: some own local functions :)
 declare function functx:isPartialDatetime
@@ -67,24 +69,32 @@ declare function functx:isPartialTime ( $arg as xs:string? ) as xs:boolean {
 (: let $datasetname := 'ALL' :)
 (: EITHER provide $datasetname := 'ALL', meaning: validate for all domains referenced from the define.xml OR:
 $datasetname:='XX' where XX is a specific dataset name, MEANING validate for a single dataset only :)
+let $definedoc := doc(concat($base,$define))
 (:  get the definitions for the domains (ItemGroupDefs in define.xml) :)
 let $datasets := (
-    if($datasetname != 'ALL') then doc(concat($base,$define))//odm:ItemGroupDef[@Name=$datasetname]
-    else doc(concat($base,$define))//odm:ItemGroupDef
+    if($datasetname != 'ALL') then $definedoc//odm:ItemGroupDef[@Name=$datasetname]
+    else $definedoc//odm:ItemGroupDef
 )
 (: iterate over all datasets :)
 for $dataset in $datasets
 	let $dsname := $dataset/@Name
-    let $datasetlocation := concat($base,$dataset/def:leaf/@xlink:href)
-    for $record in doc($datasetlocation)//odm:ItemGroupData
+	let $datasetlocation := (
+		if($defineversion='2.1') then $dataset/def21:leaf/@xlink:href
+		else $dataset/def:leaf/@xlink:href
+	)
+	let $datasetdoc := (
+		if($datasetlocation) then doc(concat($base,$datasetlocation))
+		else ()
+	)
+    for $record in $datasetdoc//odm:ItemGroupData
         let $recnum := $record/@data:ItemGroupDataSeq
         (: iterate over all datapoints in the record, get OID and value :)
         for $datapoint in $record/odm:ItemData
             let $itemoid := $datapoint/@ItemOID
             let $itemvalue := $datapoint/@Value
             (: get the datatype in the corresponding ItemDef :)
-            let $datatype := doc(concat($base,$define))//odm:ItemDef[@OID=$itemoid]/@DataType
-            let $varname := doc(concat($base,$define))//odm:ItemDef[@OID=$itemoid]/@Name
+            let $datatype := $definedoc//odm:ItemDef[@OID=$itemoid]/@DataType
+            let $varname := $definedoc//odm:ItemDef[@OID=$itemoid]/@Name
             (: define.xml allows following datatypes:
             text, integer, float, datetime, date, time, partialDate, partialTime, partialDatetime, 
             incompleteDatetime, durationDatetime

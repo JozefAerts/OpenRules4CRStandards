@@ -16,37 +16,45 @@ All values of Qualifier Variable Label (QLABEL) should be the same for a given v
 :)
 xquery version "3.0";
 declare namespace def = "http://www.cdisc.org/ns/def/v2.0";
+declare namespace def21 = "http://www.cdisc.org/ns/def/v2.1";
 declare namespace odm="http://www.cdisc.org/ns/odm/v1.3";
 declare namespace data="http://www.cdisc.org/ns/Dataset-XML/v1.0";
 declare namespace xlink="http://www.w3.org/1999/xlink";
 (: "declare variable ... external" allows to pass $base and $define from an external programm :)
 declare variable $base external;
 declare variable $define external; 
+declare variable $defineversion external;
 (: let $base := '/db/fda_submissions/cdisc01/' :)
 (: let $define := 'define2-0-0-example-sdtm.xml' :)
-
+let $definedoc := doc(concat($base,$define))
 (: Iterate over all SUPPxx datasets :)
-for $dataset in doc(concat($base,$define))//odm:ItemGroupDef[starts-with(@Name,'SUPP')]
+for $dataset in $definedoc//odm:ItemGroupDef[starts-with(@Name,'SUPP')]
     let $name := $dataset/@Name
-    let $datasetname := $dataset/def:leaf/@xlink:href
-    let $datasetlocation := concat($base,$datasetname)
+	let $datasetname := (
+		if($defineversion='2.1') then $dataset/def21:leaf/@xlink:href
+		else $dataset/def:leaf/@xlink:href
+	)
+    let $datasetdoc := (
+		if($datasetname) then doc(concat($base,$datasetname))
+		else ()
+	)
     (: and get the OID of QLABEL and of QNAM :)
     let $qlabeloid := (
-        for $a in doc(concat($base,$define))//odm:ItemDef[@Name='QLABEL']/@OID 
-        where $a = doc(concat($base,$define))//odm:ItemGroupDef[@Name=$name]/odm:ItemRef/@ItemOID
+        for $a in $definedoc//odm:ItemDef[@Name='QLABEL']/@OID 
+        where $a = $definedoc//odm:ItemGroupDef[@Name=$name]/odm:ItemRef/@ItemOID
         return $a 
     )
     let $qnamoid := (
-        for $a in doc(concat($base,$define))//odm:ItemDef[@Name='QNAM']/@OID 
-        where $a = doc(concat($base,$define))//odm:ItemGroupDef[@Name=$name]/odm:ItemRef/@ItemOID
+        for $a in $definedoc//odm:ItemDef[@Name='QNAM']/@OID 
+        where $a = $definedoc//odm:ItemGroupDef[@Name=$name]/odm:ItemRef/@ItemOID
         return $a 
     )
     (: get all unique QNAM values within the dataset :)
-    let $uniqueqnamvalues := distinct-values(doc($datasetlocation)//odm:ItemGroupData/odm:ItemData[@ItemOID=$qnamoid]/@Value)
+    let $uniqueqnamvalues := distinct-values($datasetdoc//odm:ItemGroupData/odm:ItemData[@ItemOID=$qnamoid]/@Value)
         (: iterate over these unique QNAM values and for each of them, 
         find all records - also all with the same value for QNAM :)
         for $uniqueqnam in $uniqueqnamvalues
-            let $records := doc($datasetlocation)//odm:ItemGroupData[odm:ItemData[@ItemOID=$qnamoid][@Value=$uniqueqnam]]
+            let $records := $datasetdoc//odm:ItemGroupData[odm:ItemData[@ItemOID=$qnamoid][@Value=$uniqueqnam]]
             (: now get the distinct values for QLABEL within each QNAM :)
             let $uniqueqlabelvalues := distinct-values($records/odm:ItemData[@ItemOID=$qlabeloid]/@Value)
             (: the number of unique QLABEL values for each QNAM must be 1 :)

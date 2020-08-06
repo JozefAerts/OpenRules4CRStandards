@@ -15,6 +15,7 @@ See the License for the specific language governing permissions and limitations 
 (: CDISC Library API Implementation :)
 xquery version "3.0";
 declare namespace def = "http://www.cdisc.org/ns/def/v2.0";
+declare namespace def21 = "http://www.cdisc.org/ns/def/v2.1";
 declare namespace odm="http://www.cdisc.org/ns/odm/v1.3";
 declare namespace data="http://www.cdisc.org/ns/Dataset-XML/v1.0";
 declare namespace xlink="http://www.w3.org/1999/xlink";
@@ -23,6 +24,7 @@ declare namespace functx = "http://www.functx.com";
 (: "declare variable ... external" allows to pass $base and $define from an external programm :)
 declare variable $base external;
 declare variable $define external;
+declare variable $defineversion external;
 (: CDISC Library username and password :)
 declare variable $username external;
 declare variable $password external;
@@ -71,17 +73,30 @@ we group all dataset definition by def:Class :)
 (: Order all dataset definitions per def:Class,
 so that we need only 1 CDISC-Library call per class :)
 let $groupeditemgroupdefs := (
-	for $itemgroup in $definedoc//odm:ItemGroupDef
-            group by 
-            $a := $itemgroup/@def:Class
-            return element group {  
-                $itemgroup
-            }
+	if($defineversion = '2.1') then
+		for $itemgroup in $definedoc//odm:ItemGroupDef
+				group by 
+				$a := $itemgroup/def21:Class/@Name
+				return element group {  
+					$itemgroup
+				}
+	else 
+		for $itemgroup in $definedoc//odm:ItemGroupDef
+				group by 
+				$a := $itemgroup/@def:Class
+				return element group {  
+					$itemgroup
+				}
 )
 (: iterate over the groups - 
 in each group, all dataset definitions (ItemGroupDef) have the same value for def:Class :)
 for $group in $groupeditemgroupdefs
-	let $defclass := $group/odm:ItemGroupDef[1]/@def:Class
+	let $defclass := (
+		if($defineversion = '2.1') then
+			$group/odm:ItemGroupDef[1]/def21:Class/@Name
+		else 
+			$group/odm:ItemGroupDef[1]/@def:Class
+	)
     (: Unfortunately, the way of writing the class name (casing)
       has not always been consistent within CDISC :)
     let $class := (

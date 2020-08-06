@@ -17,38 +17,48 @@ OR: there is a 1:1 relationship
 :)
 xquery version "3.0";
 declare namespace def = "http://www.cdisc.org/ns/def/v2.0";
+declare namespace def21 = "http://www.cdisc.org/ns/def/v2.1";
 declare namespace odm="http://www.cdisc.org/ns/odm/v1.3";
 declare namespace data="http://www.cdisc.org/ns/Dataset-XML/v1.0";
 declare namespace xlink="http://www.w3.org/1999/xlink";
 (: "declare variable ... external" allows to pass $base and $define from an external programm :)
 declare variable $base external;
 declare variable $define external; 
+declare variable $defineversion external;
 (: let $base := 'SEND_3_0_PDS2014/'  :)
 (: let $define := 'define2-0-0_DS.xml' :)
+let $definedoc := doc(concat($base,$define))
 (: iterate over all datasets within INTERVENTIONS, EVENTS, FINDINGS :)
-for $dataset in doc(concat($base,$define))//odm:ItemGroupDef[upper-case(@def:Class)='INTERVENTIONS' or upper-case(@def:Class)='EVENTS' or upper-case(@def:Class)='FINDINGS']
+for $dataset in $definedoc//odm:ItemGroupDef[upper-case(@def:Class)='INTERVENTIONS' or upper-case(@def:Class)='EVENTS' or upper-case(@def:Class)='FINDINGS'
+		or upper-case(./def21:Class/@Name)='INTERVENTIONS' or upper-case(./def21:Class/@Name)='EVENTS' or upper-case(./def21:Class/@Name)='FINDINGS']
     let $name := $dataset/@Name
-    let $datasetname := $dataset/def:leaf/@xlink:href
-    let $datasetlocation:= concat($base,$datasetname)
+	let $datasetname := (
+		if($defineversion='2.1') then $dataset/def21:leaf/@xlink:href
+		else $dataset/def:leaf/@xlink:href
+	)
+    let $datasetdoc:= (
+		if($datasetname) then doc(concat($base,$datasetname))
+		else ()
+	)
     (: and get the OIDs of --TPT and --ELTM :)
     let $tptoid := (
-    for $a in doc(concat($base,$define))//odm:ItemDef[ends-with(@Name,'TPT')]/@OID 
-        where $a = doc(concat($base,$define))//odm:ItemGroupDef[@Name=$name]/odm:ItemRef/@ItemOID
+    for $a in $definedoc//odm:ItemDef[ends-with(@Name,'TPT')]/@OID 
+        where $a = $definedoc//odm:ItemGroupDef[@Name=$name]/odm:ItemRef/@ItemOID
         return $a
     )
-    let $tptname := doc(concat($base,$define))//odm:ItemDef[@OID=$tptoid]/@Name
+    let $tptname := $definedoc//odm:ItemDef[@OID=$tptoid]/@Name
     let $eltmoid := (
-		for $a in doc(concat($base,$define))//odm:ItemDef[ends-with(@Name,'ELTM')]/@OID 
-			where $a = doc(concat($base,$define))//odm:ItemGroupDef[@Name=$name]/odm:ItemRef/@ItemOID
+		for $a in $definedoc//odm:ItemDef[ends-with(@Name,'ELTM')]/@OID 
+			where $a = $definedoc//odm:ItemGroupDef[@Name=$name]/odm:ItemRef/@ItemOID
 			return $a
     )
-    let $eltmname := doc(concat($base,$define))//odm:ItemDef[@OID=$eltmoid]/@Name
+    let $eltmname := $definedoc//odm:ItemDef[@OID=$eltmoid]/@Name
     (: Get all unique values of --TPT :)
-    let $tptuniquevalues := distinct-values(doc($datasetlocation)//odm:ItemGroupData/odm:ItemData[@ItemOID=$tptoid]/@Value)
+    let $tptuniquevalues := distinct-values($datasetdoc//odm:ItemGroupData/odm:ItemData[@ItemOID=$tptoid]/@Value)
     (: iterate over the unique values and get the records :)
     for $tptuniquevalue in $tptuniquevalues
         (: get all the records :)
-        let $uniquetptrecords := doc($datasetlocation)//odm:ItemGroupData[odm:ItemData[@ItemOID=$tptoid][@Value=$tptuniquevalue]]
+        let $uniquetptrecords := $datasetdoc//odm:ItemGroupData[odm:ItemData[@ItemOID=$tptoid][@Value=$tptuniquevalue]]
         let $uniquetptrecordcount := count($uniquetptrecords)
         (: get the unique values for ELTM within each of the unique TPT values, and count them :)
         let $uniqueeltmvalues := distinct-values($uniquetptrecords/odm:ItemData[@ItemOID=$eltmoid]/@Value)

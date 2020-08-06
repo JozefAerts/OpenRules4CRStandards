@@ -17,6 +17,7 @@ Collection Study Day (--DY) variable value should be not be imputed. It may be o
 (: Applies to: INTERVENTIONS, EVENTS, FINDINGS, CO, SE, SV :)
 xquery version "3.0";
 declare namespace def = "http://www.cdisc.org/ns/def/v2.0";
+declare namespace def21 = "http://www.cdisc.org/ns/def/v2.1";
 declare namespace odm="http://www.cdisc.org/ns/odm/v1.3";
 declare namespace data="http://www.cdisc.org/ns/Dataset-XML/v1.0";
 declare namespace xlink="http://www.w3.org/1999/xlink";
@@ -30,21 +31,26 @@ declare function functx:is-value-in-sequence
 (: "declare variable ... external" allows to pass $base and $define from an external programm :)
 declare variable $base external;
 declare variable $define external; 
+declare variable $defineversion external;
 (: let $base := '/db/fda_submissions/cdisc01/' 
 let $define := 'define2-0-0-example-sdtm.xml' :)
+let $definedoc := doc(concat($base,$define))
 (: Get the location of the DM dataset :)
-let $dmdataset := doc(concat($base,$define))//odm:ItemGroupDef[@Name='DM']/def:leaf/@xlink:href
+let $dmdataset := (
+	if($defineversion='2.1') then $definedoc//odm:ItemGroupDef[@Name='DM']/def21:leaf/@xlink:href
+	else $definedoc//odm:ItemGroupDef[@Name='DM']/def:leaf/@xlink:href
+)
 let $dmdatasetlocation := concat($base,$dmdataset)
 (: get the OID of the RFSTDTC variable :)
 let $rfstdtcoid := (
-    for $a in doc(concat($base,$define))//odm:ItemDef[@Name='RFSTDTC']/@OID 
-        where $a = doc(concat($base,$define))//odm:ItemGroupDef[@Name='DM']/odm:ItemRef/@ItemOID
+    for $a in $definedoc//odm:ItemDef[@Name='RFSTDTC']/@OID 
+        where $a = $definedoc//odm:ItemGroupDef[@Name='DM']/odm:ItemRef/@ItemOID
         return $a   
 )
 (: get the OID of the USUBJID variable :)
 let $dmusubjidoid := (
-    for $a in doc(concat($base,$define))//odm:ItemDef[@Name='USUBJID']/@OID 
-        where $a = doc(concat($base,$define))//odm:ItemGroupDef[@Name='DM']/odm:ItemRef/@ItemOID
+    for $a in $definedoc//odm:ItemDef[@Name='USUBJID']/@OID 
+        where $a = $definedoc//odm:ItemGroupDef[@Name='DM']/odm:ItemRef/@ItemOID
         return $a  
 )
 (: make a list of all USUBJID values for which RFSTDTC is not a complete date :)
@@ -54,30 +60,38 @@ let $usubjidincompleterfstdtc := (
         return $record/odm:ItemData[@ItemOID=$dmusubjidoid]/@Value
 )
 (: iterate over all other datasets in INTERVENTIONS, EVENTS, FINDINGS, CO, SE, SV :)
-for $dataset in doc(concat($base,$define))//odm:ItemGroupDef[upper-case(@def:Class)='INTERVENTIONS' or upper-case(@def:Class)='EVENTS' or upper-case(@def:Class)='FINDINGS' or @Domain='CO' or @Domain='SE' or @Domain='SV']
+for $dataset in $definedoc//odm:ItemGroupDef[upper-case(@def:Class)='INTERVENTIONS' or upper-case(@def:Class)='EVENTS' or upper-case(@def:Class)='FINDINGS' 
+		or upper-case(./def21:Class/@Name)='FINDINGS' or upper-case(./def21:Class/@Name)='FINDINGS' or upper-case(./def21:Class/@Name)='FINDINGS' 
+		or @Domain='CO' or @Domain='SE' or @Domain='SV']
     let $name := $dataset/@Name
-    let $datasetname := $dataset/def:leaf/@xlink:href
-    let $datasetlocation := concat($base,$datasetname)
+	let $datasetname := (
+		if($defineversion='2.1') then $dataset/def21:leaf/@xlink:href
+		else $dataset/def:leaf/@xlink:href
+	)
+    let $datasetdoc := (
+		if($datasetname) then doc(concat($base,$datasetname))
+		else ()
+	)
     (: Get the OIDs of the --DY and --DTC variables  :)
     let $dyoid := (
-        for $a in doc(concat($base,$define))//odm:ItemDef[ends-with(@Name,'DY') and string-length(@Name)=4]/@OID 
-        where $a = doc(concat($base,$define))//odm:ItemGroupDef[@Name=$name]/odm:ItemRef/@ItemOID
+        for $a in $definedoc//odm:ItemDef[ends-with(@Name,'DY') and string-length(@Name)=4]/@OID 
+        where $a = $definedoc//odm:ItemGroupDef[@Name=$name]/odm:ItemRef/@ItemOID
         return $a
     )
     let $dyname := concat($name,'DY')
     let $dtcoid := (
-        for $a in doc(concat($base,$define))//odm:ItemDef[ends-with(@Name,'DTC') and string-length(@Name)=5]/@OID 
-        where $a = doc(concat($base,$define))//odm:ItemGroupDef[@Name=$name]/odm:ItemRef/@ItemOID
+        for $a in $definedoc//odm:ItemDef[ends-with(@Name,'DTC') and string-length(@Name)=5]/@OID 
+        where $a = $definedoc//odm:ItemGroupDef[@Name=$name]/odm:ItemRef/@ItemOID
         return $a
     ) 
-    let $dtcname := doc(concat($base,$define))//odm:ItemDef[@OID=$dtcoid]/@Name 
+    let $dtcname := $definedoc//odm:ItemDef[@OID=$dtcoid]/@Name 
     (: and the OID of the USUBJID variable (might be different from the one in DM) :)
     let $usubjidoid := (
-        for $a in doc(concat($base,$define))//odm:ItemDef[@Name='USUBJID']/@OID 
-        where $a = doc(concat($base,$define))//odm:ItemGroupDef[@Name=$name]/odm:ItemRef/@ItemOID
+        for $a in $definedoc//odm:ItemDef[@Name='USUBJID']/@OID 
+        where $a = $definedoc//odm:ItemGroupDef[@Name=$name]/odm:ItemRef/@ItemOID
         return $a
     )
-    for $record in doc($datasetlocation)//odm:ItemGroupData[odm:ItemData[@ItemOID=$dtcoid]]
+    for $record in $datasetdoc//odm:ItemGroupData[odm:ItemData[@ItemOID=$dtcoid]]
         let $recnum := $record/@data:ItemGroupDataSeq
         (: get the USUBJID value :)
         let $usubjidvalue := $record/odm:ItemData[@ItemOID=$usubjidoid]/@Value

@@ -18,36 +18,44 @@ INTERVENTIONS
 :)
 xquery version "3.0";
 declare namespace def = "http://www.cdisc.org/ns/def/v2.0";
+declare namespace def21 = "http://www.cdisc.org/ns/def/v2.1";
 declare namespace odm="http://www.cdisc.org/ns/odm/v1.3";
 declare namespace data="http://www.cdisc.org/ns/Dataset-XML/v1.0";
 declare namespace xlink="http://www.w3.org/1999/xlink";
 (: "declare variable ... external" allows to pass $base and $define from an external programm :)
 declare variable $base external;
 declare variable $define external; 
+declare variable $defineversion external;
 (: let $base := '/db/fda_submissions/cdisc01/' :)
 (: let $define := 'define2-0-0-example-sdtm.xml' :)
-
+let $definedoc := doc(concat($base,$define))
 (: iterate over all INTERVENTION domains :)
-for $dataset in doc(concat($base,$define))//odm:ItemGroupDef[upper-case(@def:Class)='INTERVENTIONS']
+for $dataset in $definedoc//odm:ItemGroupDef[upper-case(@def:Class)='INTERVENTIONS' or upper-case(./def21:Class/@Name)='INTERVENTIONS']
     let $name := $dataset/@Name
     let $domain := $dataset/@Domain
-    let $datasetname := $dataset/def:leaf/@xlink:href
-    let $datasetlocation := concat($base,$datasetname)
+	let $datasetname := (
+		if($defineversion='2.1') then $dataset/def21:leaf/@xlink:href
+		else $dataset/def:leaf/@xlink:href
+	)
+    let $datasetdoc := (
+		if($datasetname) then doc(concat($base,$datasetname))
+		else ()
+	)
     (: get the OID of VAMTU and VAMT variables :)
     let $vamtuoid := (
-        for $a in doc(concat($base,$define))//odm:ItemDef[ends-with(@Name,'VAMTU')]/@OID 
-        where $a = doc(concat($base,$define))//odm:ItemGroupDef[@Name=$name]/odm:ItemRef/@ItemOID
+        for $a in $definedoc//odm:ItemDef[ends-with(@Name,'VAMTU')]/@OID 
+        where $a = $definedoc//odm:ItemGroupDef[@Name=$name]/odm:ItemRef/@ItemOID
         return $a
     )
-    let $vamtuname := doc(concat($base,$define))//odm:ItemDef[@OID=$vamtuoid]/@Name
+    let $vamtuname := $definedoc//odm:ItemDef[@OID=$vamtuoid]/@Name
     let $vamtoid := (
-        for $a in doc(concat($base,$define))//odm:ItemDef[ends-with(@Name,'VAMT')]/@OID 
-        where $a = doc(concat($base,$define))//odm:ItemGroupDef[@Name=$name]/odm:ItemRef/@ItemOID
+        for $a in $definedoc//odm:ItemDef[ends-with(@Name,'VAMT')]/@OID 
+        where $a = $definedoc//odm:ItemGroupDef[@Name=$name]/odm:ItemRef/@ItemOID
         return $a
     )
-    let $vamtname := doc(concat($base,$define))//odm:ItemDef[@OID=$vamtoid]/@Name
+    let $vamtname := $definedoc//odm:ItemDef[@OID=$vamtoid]/@Name
     (: iterate over all records for which VAMT is populated :)
-    for $record in doc($datasetlocation)//odm:ItemGroupData[odm:ItemData[@ItemOID=$vamtoid]]
+    for $record in $datasetdoc//odm:ItemGroupData[odm:ItemData[@ItemOID=$vamtoid]]
         let $recnum := $record/@data:ItemGroupDataSeq
         (: and get the value of the VAMT variable :)
         let $vamtvalue := $record/odm:ItemData[@ItemOID=$vamtoid]/@Value

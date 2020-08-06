@@ -16,32 +16,38 @@ See the License for the specific language governing permissions and limitations 
 (: TODO: must be done OVER datasets within the same domain :)
 xquery version "3.0";
 declare namespace def = "http://www.cdisc.org/ns/def/v2.0";
+declare namespace def21 = "http://www.cdisc.org/ns/def/v2.1";
 declare namespace odm="http://www.cdisc.org/ns/odm/v1.3";
 declare namespace data="http://www.cdisc.org/ns/Dataset-XML/v1.0";
 declare namespace xlink="http://www.w3.org/1999/xlink";
 (: "declare variable ... external" allows to pass $base and $define from an external programm :)
 declare variable $base external;  
 declare variable $define external;
+declare variable $defineversion external;
 declare variable $datasetname external;
 (: let $base := '/db/fda_submissions/cdisc01/' :)
 (: let $define := 'define2-0-0-example-sdtm.xml'  :)
-for $itemgroupdef in doc(concat($base,$define))//odm:ItemGroupDef[@Name=$datasetname]
+let $definedoc := doc(concat($base,$define))
+for $itemgroupdef in $definedoc//odm:ItemGroupDef[@Name=$datasetname]
 let $domain := $itemgroupdef/@Domain
 let $itemgroupoid := $itemgroupdef/@OID
 let $itemgroupname := $itemgroupdef/@Name
-let $dsname := $itemgroupdef/def:leaf/@xlink:href
+let $dsname := (
+	if($defineversion='2.1') then $itemgroupdef/def21:leaf/@xlink:href
+	else $itemgroupdef/def:leaf/@xlink:href
+)
 let $datasets := concat($base,$dsname) (: result is a set of datasets - but in this case only 1 :)
 (: get the OID of --SEQ, USUBJID :)
 let $usubjidoid := 
-    for $a in doc(concat($base,$define))//odm:ItemDef[@Name='USUBJID']/@OID 
-    where $a = doc(concat($base,$define))//odm:ItemGroupDef[@Name=$itemgroupname]/odm:ItemRef/@ItemOID
+    for $a in $definedoc//odm:ItemDef[@Name='USUBJID']/@OID 
+    where $a = $definedoc//odm:ItemGroupDef[@Name=$itemgroupname]/odm:ItemRef/@ItemOID
     return $a 
 let $seqoid := 
- 	for $a in doc(concat($base,$define))//odm:ItemDef[ends-with(@Name,'SEQ')]/@OID 
-    where $a = doc(concat($base,$define))//odm:ItemGroupDef[@Name=$itemgroupname]/odm:ItemRef/@ItemOID
+ 	for $a in $definedoc//odm:ItemDef[ends-with(@Name,'SEQ')]/@OID 
+    where $a = $definedoc//odm:ItemGroupDef[@Name=$itemgroupname]/odm:ItemRef/@ItemOID
     return $a 
  (: get the Name of --SEQ :)
- let $seqname := doc(concat($base,$define))//odm:ItemDef[@OID=$seqoid]/@Name
+ let $seqname := $definedoc//odm:ItemDef[@OID=$seqoid]/@Name
 (: now iterate over all datasets, but not the Trial design datasets and not for SUPPxx datasets :)
 for $datasetdoc in doc($datasets)
    let $orderedrecords := (

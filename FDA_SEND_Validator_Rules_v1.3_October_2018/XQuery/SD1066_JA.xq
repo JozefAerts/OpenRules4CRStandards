@@ -16,31 +16,39 @@ Variable Value (IDVARVAL) variable value should not be populated, when Relations
 :)
 xquery version "3.0";
 declare namespace def = "http://www.cdisc.org/ns/def/v2.0";
+declare namespace def21 = "http://www.cdisc.org/ns/def/v2.1";
 declare namespace odm="http://www.cdisc.org/ns/odm/v1.3";
 declare namespace data="http://www.cdisc.org/ns/Dataset-XML/v1.0";
 declare namespace xlink="http://www.w3.org/1999/xlink";
 (: "declare variable ... external" allows to pass $base and $define from an external programm :)
 declare variable $base external;
 declare variable $define external; 
+declare variable $defineversion external;
 (: let $base := '/db/fda_submissions/cdisc01/'  :)
 (: let $define := 'define2-0-0-example-sdtm.xml' :)
-
+let $definedoc := doc(concat($base,$define))
 (: Get the location of the RELREC dataset :)
-let $relrecdatasetname := doc(concat($base,$define))//odm:ItemGroupDef[@Name='RELREC']/def:leaf/@xlink:href
-let $relrecdatasetlocation := concat($base,$relrecdatasetname)
+let $relrecdatasetname := (
+	if($defineversion='2.1') then $definedoc//odm:ItemGroupDef[@Name='RELREC']/def21:leaf/@xlink:href
+	else $definedoc//odm:ItemGroupDef[@Name='RELREC']/def:leaf/@xlink:href
+)
+let $relrecdatasetdoc := (
+	if($relrecdatasetname) then doc(concat($base,$relrecdatasetname))
+	else ()
+)
 (: and get the OIDs of the IDVARVAL and RELTYPE variables :)
 let $idvarvaloid := (
-    for $a in doc(concat($base,$define))//odm:ItemDef[@Name='IDVARVAL']/@OID 
-        where $a = doc(concat($base,$define))//odm:ItemGroupDef[@Name='RELREC']/odm:ItemRef/@ItemOID
+    for $a in $definedoc//odm:ItemDef[@Name='IDVARVAL']/@OID 
+        where $a = $definedoc//odm:ItemGroupDef[@Name='RELREC']/odm:ItemRef/@ItemOID
         return $a 
 )
 let $reltypeoid := (
-    for $a in doc(concat($base,$define))//odm:ItemDef[@Name='RELTYPE']/@OID 
-        where $a = doc(concat($base,$define))//odm:ItemGroupDef[@Name='RELREC']/odm:ItemRef/@ItemOID
+    for $a in $definedoc//odm:ItemDef[@Name='RELTYPE']/@OID 
+        where $a = $definedoc//odm:ItemGroupDef[@Name='RELREC']/odm:ItemRef/@ItemOID
         return $a     
 )
 (: iterate over all the records in the dataset :)
-for $record in doc($relrecdatasetlocation)//odm:ItemGroupData
+for $record in $relrecdatasetdoc//odm:ItemGroupData
     let $recnum := $record/@data:ItemGroupDataSeq
     (: and get the IDVARVAL and RELTYPE data points :)
     let $idvarvalvalue := $record/odm:ItemData[@ItemOID=$idvarvaloid]/@Value

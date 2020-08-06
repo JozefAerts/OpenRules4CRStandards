@@ -17,12 +17,14 @@ Permissible variable whould not be present in domain, when the variable has miss
 Implementation using the CDISC Library :)
 xquery version "3.0";
 declare namespace def = "http://www.cdisc.org/ns/def/v2.0";
+declare namespace def21 = "http://www.cdisc.org/ns/def/v2.1";
 declare namespace odm="http://www.cdisc.org/ns/odm/v1.3";
 declare namespace data="http://www.cdisc.org/ns/Dataset-XML/v1.0";
 declare namespace xlink="http://www.w3.org/1999/xlink";
 (: "declare variable ... external" allows to pass $base and $define from an external programm :)
 declare variable $base external;
 declare variable $define external;
+declare variable $defineversion external;
 declare variable $username external;
 declare variable $password external;
 (: let $base := 'SEND_3_0_PDS2014/' :)
@@ -38,19 +40,30 @@ let $sendigversion := translate($sendigversion,'.','-')
 (: We will group the datasets by def:Class, 
 this to minimize the number of calls to the CDISC Library :)
 let $groupeditemgroupdefs := (
-	for $itemgroup in $definedoc//odm:ItemGroupDef
-            group by 
-            $a := $itemgroup/@def:Class
-            return element group {  
-                $itemgroup
-            }
+	if($defineversion = '2.1') then
+		for $itemgroup in $definedoc//odm:ItemGroupDef
+				group by 
+				$a := $itemgroup/def21:Class/@Name
+				return element group {  
+					$itemgroup
+				}
+	else 
+		for $itemgroup in $definedoc//odm:ItemGroupDef
+			group by 
+			$a := $itemgroup/@def:Class
+			return element group {  
+				$itemgroup
+			}
 )
 (: iterate over all the groups - 
 all datasets within the same group have the same value for @def:Class :)
 (: iterate over the groups - 
 in each group, all dataset definitions (ItemGroupDef) have the same value for def:Class :)
 for $group in $groupeditemgroupdefs
-	let $defclass := $group/odm:ItemGroupDef[1]/@def:Class
+	let $defclass := (
+		if($defineversion='2.1') then $group/odm:ItemGroupDef[1]/def21:Class/@Name
+		else $group/odm:ItemGroupDef[1]/@def:Class
+	)
     (: Unfortunately, the way of writing the class name (casing)
       has not always been consistent within CDISC :)
     let $class := (
@@ -78,7 +91,10 @@ for $group in $groupeditemgroupdefs
         else substring($name,1,2)
       )
       (: get the location of the dataset and the document itself :)
-      let $dsloc := $itemgroupdef/def:leaf/@xlink:href
+		let $dsloc := (
+			if($defineversion='2.1') then $itemgroupdef/def21:leaf/@xlink:href
+			else $itemgroupdef/def:leaf/@xlink:href
+		)
       let $doc := (
       	if($dsloc) then doc(concat($base,$dsloc))
         else () (: no location defined :)

@@ -16,6 +16,7 @@ Epoch (EPOCH) values in all datasets should match entries in the Trial Arms (TA)
 :)
 xquery version "3.0";
 declare namespace def = "http://www.cdisc.org/ns/def/v2.0";
+declare namespace def21 = "http://www.cdisc.org/ns/def/v2.1";
 declare namespace odm="http://www.cdisc.org/ns/odm/v1.3";
 declare namespace data="http://www.cdisc.org/ns/Dataset-XML/v1.0";
 declare namespace xlink="http://www.w3.org/1999/xlink";
@@ -29,7 +30,8 @@ declare function functx:is-value-in-sequence
 (: "declare variable ... external" allows to pass $base and $define from an external programm :)
 declare variable $base external;
 declare variable $define external; 
-deflare variable $datasetname external;
+declare variable $defineversion external;
+declare variable $datasetname external;
 (: let $base := 'SEND_3_0_PDS2014/' :)
 (: let $define := 'define2-0-0_DS.xml' :)
 (: let $base := 'SEND_3_0_PC201708/' :)
@@ -37,7 +39,10 @@ deflare variable $datasetname external;
 let $definedoc := doc(concat($base,$define))
 (: Get the TA dataset :)
 let $tadataset := $definedoc//odm:ItemGroupDef[@Name='TA']
-let $tadatasetname := $tadataset/def:leaf/@xlink:href
+let $tadatasetname := (
+	if($defineversion='2.1') then $tadataset/def21:leaf/@xlink:href
+	else $tadataset/def:leaf/@xlink:href
+)
 (: and get the document itself :)
 let $tadoc := (
 	if($tadatasetname) then doc(concat($base,$tadatasetname))
@@ -59,7 +64,14 @@ let $datasets := $definedoc//odm:ItemGroupDef[@Name = $datasetname and not(@Name
 for $dataset in $datasets  (: ensure that TE-EPOCH has been defined :)
     (: get name and location :)
     let $name := $dataset/@Name
-    let $datasetlocation := concat($base,$dataset/def:leaf/@xlink:href)
+	let $datasetlocation := (
+		if($defineversion='2.1') then $dataset/def21:leaf/@xlink:href
+		else $dataset/def:leaf/@xlink:href
+	) 
+	let $datasetdoc:= (
+		if($datasetlocation) then doc(concat($base,$datasetlocation))
+		else ()
+	)
     (: and the OID of EPOCH :)
     let $datasetepochoid := (
         for $a in doc(concat($base,$define))//odm:ItemDef[@Name='EPOCH']/@OID 
@@ -67,7 +79,7 @@ for $dataset in $datasets  (: ensure that TE-EPOCH has been defined :)
         return $a
     )
     (: iterate over all records in this dataset that have a EPOCH variable :)
-    for $record in doc($datasetlocation)//odm:ItemGroupData[odm:ItemData[@ItemOID=$datasetepochoid]]
+    for $record in $datasetdoc//odm:ItemGroupData[odm:ItemData[@ItemOID=$datasetepochoid]]
         let $recnum := $record/@data:ItemGroupDataSeq
         (: now get the value of the EPOCH variable :)
         let $epochvalue := $record/odm:ItemData[@ItemOID=$datasetepochoid]/@Value

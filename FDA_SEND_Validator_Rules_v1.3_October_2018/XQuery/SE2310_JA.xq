@@ -16,36 +16,45 @@ Status (--STAT) should be NULL, Standardized Result in Character Format (--STRES
 :) 
 xquery version "3.0";
 declare namespace def = "http://www.cdisc.org/ns/def/v2.0";
+declare namespace def21 = "http://www.cdisc.org/ns/def/v2.1";
 declare namespace odm="http://www.cdisc.org/ns/odm/v1.3";
 declare namespace data="http://www.cdisc.org/ns/Dataset-XML/v1.0";
 declare namespace xlink="http://www.w3.org/1999/xlink";
 (: "declare variable ... external" allows to pass $base and $define from an external programm :)
 declare variable $base external;
 declare variable $define external; 
+declare variable $defineversion external;
 declare variable $datasetname external;
 (: let $base := '/db/fda_submissions/cdisc01/' :)
 (: let $define := 'define2-0-0-example-sdtm.xml' :)
 (: let $datasetname := 'LB' :)
+let $definedoc := doc(concat($base,$define))
 (: iterate over all provided datasets within SC, BW, BG, FW, LB, DD, CL, MI, MA, OM, PM, PC, PP, TF, EG, VS :)
-for $dataset in doc(concat($base,$define))//odm:ItemGroupDef[@Name=$datasetname][@Domain='SC' or @Domain='BW' or @Domain='BG' or @Domain='FW' or @Domain='LB' or @Domain='DD' or @Domain='CL' or @Domain='MI' or @Domain='MA' or @Domain='OM' or @Domain='PM' or @Domain='PC' or @Domain='PP' or @Domain='TF' or @Domain='EG' or @Domain='VS']
+for $dataset in $definedoc//odm:ItemGroupDef[@Name=$datasetname][@Domain='SC' or @Domain='BW' or @Domain='BG' or @Domain='FW' or @Domain='LB' or @Domain='DD' or @Domain='CL' or @Domain='MI' or @Domain='MA' or @Domain='OM' or @Domain='PM' or @Domain='PC' or @Domain='PP' or @Domain='TF' or @Domain='EG' or @Domain='VS']
     let $name := $dataset/@Name
-    let $dsname := $dataset/def:leaf/@xlink:href
-    let $datasetlocation := concat($base,$dsname)
+	let $dsname := (
+		if($defineversion='2.1') then $dataset/def21:leaf/@xlink:href
+		else $dataset/def:leaf/@xlink:href
+	)
+    let $datasetdoc := (
+		if($dsname) then doc(concat($base,$dsname))
+		else ()
+	)
     (: get the OIDs of the --STAT and --STRESC variable :)
     let $statoid := (
-        for $a in doc(concat($base,$define))//odm:ItemDef[ends-with(@Name,'STAT')]/@OID 
-        where $a = doc(concat($base,$define))//odm:ItemGroupDef[@Name=$name]/odm:ItemRef/@ItemOID
+        for $a in $definedoc//odm:ItemDef[ends-with(@Name,'STAT')]/@OID 
+        where $a = $definedoc//odm:ItemGroupDef[@Name=$name]/odm:ItemRef/@ItemOID
         return $a
     )
-    let $statname := doc(concat($base,$define))//odm:ItemDef[@OID=$statoid]/@Name
+    let $statname := $definedoc//odm:ItemDef[@OID=$statoid]/@Name
     let $strescoid := (
-        for $a in doc(concat($base,$define))//odm:ItemDef[ends-with(@Name,'STRESC')]/@OID 
-        where $a = doc(concat($base,$define))//odm:ItemGroupDef[@Name=$name]/odm:ItemRef/@ItemOID
+        for $a in $definedoc//odm:ItemDef[ends-with(@Name,'STRESC')]/@OID 
+        where $a = $definedoc//odm:ItemGroupDef[@Name=$name]/odm:ItemRef/@ItemOID
         return $a
     )
-    let $strescname := doc(concat($base,$define))//odm:ItemDef[@OID=$strescoid]/@Name
+    let $strescname := $definedoc//odm:ItemDef[@OID=$strescoid]/@Name
     (: iterate over all records for which STRESC is populated :)
-    for $record in doc($datasetlocation)//odm:ItemGroupData[odm:ItemData[@ItemOID=$strescoid]/@Value]
+    for $record in $datasetdoc//odm:ItemGroupData[odm:ItemData[@ItemOID=$strescoid]/@Value]
         let $recnum := $record/@data:ItemGroupDataSeq
         (: get the value of STAT  :)
         let $statvalue := $record/odm:ItemData[@ItemOID=$statoid]/@Value

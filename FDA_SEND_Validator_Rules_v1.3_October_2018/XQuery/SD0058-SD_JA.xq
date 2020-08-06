@@ -15,6 +15,7 @@ See the License for the specific language governing permissions and limitations 
 (: CDISC Library API Implementation :)
 xquery version "3.0";
 declare namespace def = "http://www.cdisc.org/ns/def/v2.0";
+declare namespace def21 = "http://www.cdisc.org/ns/def/v2.1";
 declare namespace odm="http://www.cdisc.org/ns/odm/v1.3";
 declare namespace data="http://www.cdisc.org/ns/Dataset-XML/v1.0";
 declare namespace xlink="http://www.w3.org/1999/xlink";
@@ -23,6 +24,7 @@ declare namespace functx = "http://www.functx.com";
 (: "declare variable ... external" allows to pass $base and $define from an external programm :)
 declare variable $base external;
 declare variable $define external;
+declare variable $defineversion external;
 declare variable $datasetname external;
 (: CDISC Library username and password :)
 declare variable $username external;
@@ -74,9 +76,13 @@ let $cdisclibrarygeneralobservationsresponse := http:send-request(<http:request 
 we group all dataset definition by def:Class :)
 (: Order all dataset definitions per def:Class,
 so that we need only 1 CDISC-Library call per class :)
-
 for $itemgroupdef in $definedoc//odm:ItemGroupDef[@Name=$datasetname]
-	let $defclass := $itemgroupdef/@def:Class
+	let $defclass := (
+		if($defineversion='2.1') then 
+			$itemgroupdef/def21:Class/@Name
+		else 
+			$itemgroupdef/@def:Class
+	)
     (: Unfortunately, the way of writing the class name (casing)
       has not always been consistent within CDISC :)
     let $class := (

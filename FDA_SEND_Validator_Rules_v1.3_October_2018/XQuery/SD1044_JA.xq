@@ -14,22 +14,25 @@ See the License for the specific language governing permissions and limitations 
 (: No --BLFL variable in custom Findings domain :)
 xquery version "3.0";
 declare namespace def = "http://www.cdisc.org/ns/def/v2.0";
+declare namespace def21 = "http://www.cdisc.org/ns/def/v2.1";
 declare namespace odm="http://www.cdisc.org/ns/odm/v1.3";
 declare namespace data="http://www.cdisc.org/ns/Dataset-XML/v1.0";
 declare namespace xlink="http://www.w3.org/1999/xlink";
 (: "declare variable ... external" allows to pass $base and $define from an external programm :)
 declare variable $base external;
 declare variable $define external; 
+declare variable $defineversion external;
 (: let $base := '/db/fda_submissions/cdisc01/' 
 let $define := 'define2-0-0-example-sdtm.xml' :)
+let $definedoc := doc(concat($base,$define))
 (: In this implementation, we trust that a custom domain name starts with X, Y or Z
  as define.xml 2.0 does not have a notion of "custom domain" yet - this comes first with define.xml 2.1 :)
-for $datasetdef in doc(concat($base,$define))//odm:ItemGroupDef[starts-with(@Name,'X') or starts-with(@Name,'Y') or starts-with(@Name,'Z')][upper-case(@def:Class) = 'FINDINGS']
+for $datasetdef in $definedoc//odm:ItemGroupDef[starts-with(@Name,'X') or starts-with(@Name,'Y') or starts-with(@Name,'Z')][upper-case(@def:Class) = 'FINDINGS' or upper-case(./def21:Class/@Name)='FINDINGS']
     let $name := $datasetdef/@Name
     let $blflname := concat($name,'BLFL')
     (: get the definition of --BLFL (if any) :)
     let $blfloid := (
-        for $a in doc(concat($base,$define))//odm:ItemDef[ends-with(@Name,'BLFL')]/@OID 
+        for $a in $definedoc//odm:ItemDef[ends-with(@Name,'BLFL')]/@OID 
         where $a = $datasetdef/odm:ItemRef/@ItemOID
         return $a
     )

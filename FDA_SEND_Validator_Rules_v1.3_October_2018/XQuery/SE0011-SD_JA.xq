@@ -17,12 +17,14 @@ See the License for the specific language governing permissions and limitations 
  IMPORTANT REMARK: this also applies to SDTM, not only to SEND :)
 xquery version "3.0";
 declare namespace def = "http://www.cdisc.org/ns/def/v2.0";
+declare namespace def21 = "http://www.cdisc.org/ns/def/v2.1";
 declare namespace odm="http://www.cdisc.org/ns/odm/v1.3";
 declare namespace data="http://www.cdisc.org/ns/Dataset-XML/v1.0";
 declare namespace xlink="http://www.w3.org/1999/xlink";
 (: "declare variable ... external" allows to pass $base and $define from an external programm :)
 declare variable $base external;
 declare variable $define external;
+declare variable $defineversion external;
 declare variable $datasetname external;
 (: find all dataset definitions  :)
 (: let $base := '/db/fda_submissions/cdisc01/'  
@@ -33,9 +35,15 @@ let $definedoc := doc(concat($base,$define))
 for $datasetdef in $definedoc//odm:ItemGroupDef[@Name=$datasetname][@Domain='EX' or @Domain='BG' or @Domain='LB' or @Domain='CL' or @Domain='PC' or @domain='EG' or @Domain='VS']
     (: get the name location of the dataset :)
     let $name := $datasetdef/@Name
-    let $datasetlocation := $datasetdef/def:leaf/@xlink:href
+	let $datasetlocation := (
+		if($defineversion='2.1') then $datasetdef/def21:leaf/@xlink:href
+		else $datasetdef/def:leaf/@xlink:href
+	)
     (: and the document itself :)
-    let $datasetdoc := doc(concat($base,$datasetlocation))
+    let $datasetdoc := (
+		if($datasetlocation) then doc(concat($base,$datasetlocation))
+		else ()
+	)
     (: get the OIDs of --TPTREF and --RFTDTC, and their name :)
     let $tptrefoid := (
         for $a in $definedoc//odm:ItemDef[ends-with(@Name,'TPTREF')]/@OID 

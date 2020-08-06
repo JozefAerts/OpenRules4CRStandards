@@ -14,6 +14,7 @@ See the License for the specific language governing permissions and limitations 
 (: Rule SD0003 - Invalid ISO 8601 value for *DTC variable :)
 xquery version "3.0";
 declare namespace def = "http://www.cdisc.org/ns/def/v2.0";
+declare namespace def21 = "http://www.cdisc.org/ns/def/v2.1";
 declare namespace odm="http://www.cdisc.org/ns/odm/v1.3";
 declare namespace data="http://www.cdisc.org/ns/Dataset-XML/v1.0";
 declare namespace xlink="http://www.w3.org/1999/xlink";
@@ -23,6 +24,7 @@ declare namespace functx = "http://www.functx.com";
 (: "declare variable ... external" allows to pass $base and $define from an external programm :)
 declare variable $base external;
 declare variable $define external;
+declare variable $defineversion external;
 (: FUNCTION DECLARATIONS :)
 declare function functx:escape-for-regex
   ( $arg as xs:string? )  as xs:string {
@@ -36,13 +38,20 @@ declare function functx:substring-after-last
  } ;
 (: let $base := '/db/fda_submissions/cdisc01/' :)
 (: let $define := 'define2-0-0-example-sdtm.xml' :)
-(: iterate over all dataset declarations uzsing the ItemGroupDef nodes in the define.xml :)
-for $itemgroupdef in doc(concat($base,$define))//odm:ItemGroupDef
+let $definedoc := doc(concat($base,$define))
+(: iterate over all dataset declarations using the ItemGroupDef nodes in the define.xml :)
+for $itemgroupdef in $definedoc//odm:ItemGroupDef
 let $itemgroupdefoid := $itemgroupdef/@OID
 let $itemgroupdefname := $itemgroupdef/@Name
 (: get the dataset document :)
-let $datasetlocation := $itemgroupdef/def:leaf/@xlink:href
-let $doc := doc(concat($base,$datasetlocation))
+let $datasetlocation := (
+	if($defineversion='2.1') then $itemgroupdef/def21:leaf/@xlink:href
+	else $itemgroupdef/def:leaf/@xlink:href
+)
+let $doc := (
+	if($datasetlocation) then doc(concat($base,$datasetlocation))
+	else ()
+)
 (: get the Items for which the name ends with DTC :)
 for $itemoid in $itemgroupdef/odm:ItemRef/@ItemOID
     for $itemdefdatetimetype in $itemgroupdef/../odm:ItemDef[@OID=$itemoid][ends-with(@Name,'DTC')]

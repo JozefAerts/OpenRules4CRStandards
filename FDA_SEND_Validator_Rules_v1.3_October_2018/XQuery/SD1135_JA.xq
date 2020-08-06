@@ -14,12 +14,14 @@ See the License for the specific language governing permissions and limitations 
 (: Rule SD1135: Study Day variables (*DY) value should not be negative in Exposure (EX) datasets :)
 xquery version "3.0";
 declare namespace def = "http://www.cdisc.org/ns/def/v2.0";
+declare namespace def21 = "http://www.cdisc.org/ns/def/v2.1";
 declare namespace odm="http://www.cdisc.org/ns/odm/v1.3";
 declare namespace data="http://www.cdisc.org/ns/Dataset-XML/v1.0";
 declare namespace xlink="http://www.w3.org/1999/xlink";
 (: "declare variable ... external" allows to pass $base and $define from an external programm :)
 declare variable $base external;
 declare variable $define external;
+declare variable $defineversion external;
 (: find all dataset definitions  :)
 (: let $base := '/db/fda_submissions/cdisc01/'  
 let $define := 'define2-0-0-example-sdtm.xml' :)
@@ -28,9 +30,15 @@ let $definedoc := doc(concat($base,$define))
 for $datasetdef in $definedoc//odm:ItemGroupDef[starts-with(@Name,'EX') or @Domain='EX']
     (: get the name location of the dataset :)
     let $name := $datasetdef/@Name
-    let $datasetlocation := $datasetdef/def:leaf/@xlink:href
+	let $datasetlocation := (
+		if($defineversion='2.1') then $datasetdef/def21:leaf/@xlink:href
+		else $datasetdef/def:leaf/@xlink:href
+	)
     (: and the document itself :)
-    let $datasetdoc := doc(concat($base,$datasetlocation))
+    let $datasetdoc := (
+		if($datasetlocation) then doc(concat($base,$datasetlocation))
+		else ()
+	)
     (: iterate over all *DY (includes --DY, --STDY, --ENDY) variables :)
     let $dyvaroids := (
         for $a in $definedoc//odm:ItemDef[ends-with(@Name,'DY')]/@OID 

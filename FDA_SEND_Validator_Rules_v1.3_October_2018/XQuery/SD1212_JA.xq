@@ -15,37 +15,46 @@ See the License for the specific language governing permissions and limitations 
 :)
 xquery version "3.0";
 declare namespace def = "http://www.cdisc.org/ns/def/v2.0";
+declare namespace def21 = "http://www.cdisc.org/ns/def/v2.1";
 declare namespace odm="http://www.cdisc.org/ns/odm/v1.3";
 declare namespace data="http://www.cdisc.org/ns/Dataset-XML/v1.0";
 declare namespace xlink="http://www.w3.org/1999/xlink";
 (: "declare variable ... external" allows to pass $base and $define from an external programm :)
 declare variable $base external;
 declare variable $define external; 
+declare variable $defineversion external;
 (: let $base := '/db/fda_submissions/cdisc01/'
 let $define := 'define2-0-0-example-sdtm.xml' :)
+let $definedoc := doc(concat($base,$define))
 (: iterate over all the FINDINGS datasets :)
-for $dataset in doc(concat($base,$define))//odm:ItemGroupDef[upper-case(@def:Class)='FINDINGS']
+for $dataset in $definedoc//odm:ItemGroupDef[upper-case(@def:Class)='FINDINGS' or upper-case(./def21:Class/@Name)='FINDINGS']
     let $name := $dataset/@Name
-    let $datasetname := $dataset/def:leaf/@xlink:href
-    let $datasetlocation := concat($base,$datasetname)
+	let $datasetname := (
+		if($defineversion='2.1') then $dataset/def21:leaf/@xlink:href
+		else $dataset/def:leaf/@xlink:href
+	)
+    let $datasetdoc := (
+		if($datasetname) then doc(concat($base,$datasetname))
+		else ()
+	)
     (: Find the OID of the --STRESN variable  :)
     let $stresnoid := (
-        for $a in doc(concat($base,$define))//odm:ItemDef[ends-with(@Name,'STRESN')]/@OID 
-        where $a = doc(concat($base,$define))//odm:ItemGroupDef[@Name=$name]/odm:ItemRef/@ItemOID
+        for $a in $definedoc//odm:ItemDef[ends-with(@Name,'STRESN')]/@OID 
+        where $a = $definedoc//odm:ItemGroupDef[@Name=$name]/odm:ItemRef/@ItemOID
         return $a
     )
     (: and the name :)
-    let $stresnname := doc(concat($base,$define))//odm:ItemDef[@OID=$stresnoid]/@Name
+    let $stresnname := $definedoc//odm:ItemDef[@OID=$stresnoid]/@Name
     (: Find the OID and the name of the --STRESC variable :)
     let $strescoid := (
-        for $a in doc(concat($base,$define))//odm:ItemDef[ends-with(@Name,'STRESC')]/@OID 
-        where $a = doc(concat($base,$define))//odm:ItemGroupDef[@Name=$name]/odm:ItemRef/@ItemOID
+        for $a in $definedoc//odm:ItemDef[ends-with(@Name,'STRESC')]/@OID 
+        where $a = $definedoc//odm:ItemGroupDef[@Name=$name]/odm:ItemRef/@ItemOID
         return $a
     )
-    let $strescname := doc(concat($base,$define))//odm:ItemDef[@OID=$strescoid]/@Name
+    let $strescname := $definedoc//odm:ItemDef[@OID=$strescoid]/@Name
     (: iterate over all the records in the dataset :)
     (: TODO: to speed things up, an "IF" is needed here :)
-    for $record in doc($datasetlocation)//odm:ItemGroupData
+    for $record in $datasetdoc//odm:ItemGroupData
         let $recnum := $record/@data:ItemGroupDataSeq
         (: Get the value of the STRESC variable :)
         let $strescvalue := $record/odm:ItemData[@ItemOID=$strescoid]/@Value

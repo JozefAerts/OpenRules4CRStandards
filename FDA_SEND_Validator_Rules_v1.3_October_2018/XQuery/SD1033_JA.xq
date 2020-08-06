@@ -16,36 +16,44 @@ A value for Description of Planned Arm (ARM) must have a unique value for Planne
 :)
 xquery version "3.0";
 declare namespace def = "http://www.cdisc.org/ns/def/v2.0";
+declare namespace def21 = "http://www.cdisc.org/ns/def/v2.1";
 declare namespace odm="http://www.cdisc.org/ns/odm/v1.3";
 declare namespace data="http://www.cdisc.org/ns/Dataset-XML/v1.0";
 declare namespace xlink="http://www.w3.org/1999/xlink";
 (: "declare variable ... external" allows to pass $base and $define from an external programm :)
 declare variable $base external;
 declare variable $define external; 
+declare variable $defineversion external;
 (: let $base := '/db/fda_submissions/cdisc01/' :)
 (: let $define := 'define2-0-0-example-sdtm.xml' :)
-
+let $definedoc := doc(concat($base,$define))
 (: Iterate over the DM, TA and TV datasets :)
-for $dataset in doc(concat($base,$define))//odm:ItemGroupDef[@Name='DM' or @Name='TA' or @Name='TV']
+for $dataset in $definedoc//odm:ItemGroupDef[@Name='DM' or @Name='TA' or @Name='TV']
     let $name := $dataset/@Name
-    let $datasetname := $dataset/def:leaf/@xlink:href
-    let $datasetlocation := concat($base,$datasetname)
+	let $datasetname := (
+		if($defineversion='2.1') then $dataset/def21:leaf/@xlink:href
+		else $dataset/def:leaf/@xlink:href
+	)
+    let $datasetdoc := (
+		if($datasetname) then doc(concat($base,$datasetname))
+		else ()
+	)
     (: and get the OID of ARMCD and ARM :)
     let $armcdoid := (
-        for $a in doc(concat($base,$define))//odm:ItemDef[@Name='ARMCD']/@OID 
-        where $a = doc(concat($base,$define))//odm:ItemGroupDef[@Name=$name]/odm:ItemRef/@ItemOID
+        for $a in $definedoc//odm:ItemDef[@Name='ARMCD']/@OID 
+        where $a = $definedoc//odm:ItemGroupDef[@Name=$name]/odm:ItemRef/@ItemOID
         return $a 
     )
     let $armoid := (
-        for $a in doc(concat($base,$define))//odm:ItemDef[@Name='ARM']/@OID 
-        where $a = doc(concat($base,$define))//odm:ItemGroupDef[@Name=$name]/odm:ItemRef/@ItemOID
+        for $a in $definedoc//odm:ItemDef[@Name='ARM']/@OID 
+        where $a = $definedoc//odm:ItemGroupDef[@Name=$name]/odm:ItemRef/@ItemOID
         return $a 
     )
     (: get all unique ARMCD values within the dataset :)
-    let $uniquearmcdvalues := distinct-values(doc($datasetlocation)//odm:ItemGroupData/odm:ItemData[@ItemOID=$armcdoid]/@Value)
+    let $uniquearmcdvalues := distinct-values($datasetdoc//odm:ItemGroupData/odm:ItemData[@ItemOID=$armcdoid]/@Value)
         (: iterate over these unique ARMCD values and for each of them, find all records - also all with the same value for ARMCD:)
         for $uniquearmcd in $uniquearmcdvalues
-            let $records := doc($datasetlocation)//odm:ItemGroupData[odm:ItemData[@ItemOID=$armcdoid][@Value=$uniquearmcd]]
+            let $records := $datasetdoc//odm:ItemGroupData[odm:ItemData[@ItemOID=$armcdoid][@Value=$uniquearmcd]]
             (: now get the distinct values for ARM within each ARMCD :)
             let $uniquearmvalues := distinct-values($records/odm:ItemData[@ItemOID=$armoid]/@Value)
             (: the number of unique ARM values for each ARMCD must be 1 :)

@@ -14,6 +14,7 @@ See the License for the specific language governing permissions and limitations 
 (: Rule SE2311: Set Code (SETCD) values should match entries in the Trial Sets (TX) dataset :)
 xquery version "3.0";
 declare namespace def = "http://www.cdisc.org/ns/def/v2.0";
+declare namespace def21 = "http://www.cdisc.org/ns/def/v2.1";
 declare namespace odm="http://www.cdisc.org/ns/odm/v1.3";
 declare namespace data="http://www.cdisc.org/ns/Dataset-XML/v1.0";
 declare namespace xlink="http://www.w3.org/1999/xlink";
@@ -27,6 +28,7 @@ declare function functx:is-value-in-sequence
 (: "declare variable ... external" allows to pass $base and $define from an external programm :)
 declare variable $base external;
 declare variable $define external;
+declare variable $defineversion external;
 (: let $base := 'SEND_3_0_PC201708/' :)
 (: let $define := 'define.xml' :)
 (: the define.xml document itself :)
@@ -38,7 +40,10 @@ let $dmsetcdoid := (
         return $a
 )
 (: Get the DM document :)
-let $dmloc := $definedoc//odm:ItemGroupDef[@Name='DM']/def:leaf/@xlink:href
+let $dmloc := (
+	if($defineversion='2.1') then $definedoc//odm:ItemGroupDef[@Name='DM']/def21:leaf/@xlink:href
+	else $definedoc//odm:ItemGroupDef[@Name='DM']/def:leaf/@xlink:href
+)
 let $dmdoc := doc(concat($base,$dmloc))
 (: we need the OID of SETCD in TX :)
 let $txsetcdoid := (
@@ -47,7 +52,10 @@ let $txsetcdoid := (
         return $a
 )
 (: Get the TX document :)
-let $txloc := $definedoc//odm:ItemGroupDef[@Name='TX']/def:leaf/@xlink:href
+let $txloc := (
+	if($defineversion='2.1') then $definedoc//odm:ItemGroupDef[@Name='TX']/def21:leaf/@xlink:href
+	else $definedoc//odm:ItemGroupDef[@Name='TX']/def:leaf/@xlink:href
+)
 let $txdoc := (
 	if($txloc) then doc(concat($base,$txloc))
     else () (: TX is not present :)

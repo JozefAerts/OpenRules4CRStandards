@@ -14,6 +14,7 @@ See the License for the specific language governing permissions and limitations 
 (: Rule SD1205 ECSTDTC/EXSTDTC date is before RFXSTDTC :)
 xquery version "3.0";
 declare namespace def = "http://www.cdisc.org/ns/def/v2.0";
+declare namespace def21 = "http://www.cdisc.org/ns/def/v2.1";
 declare namespace odm="http://www.cdisc.org/ns/odm/v1.3";
 declare namespace data="http://www.cdisc.org/ns/Dataset-XML/v1.0";
 declare namespace xlink="http://www.w3.org/1999/xlink";
@@ -21,22 +22,27 @@ declare namespace request="http://exist-db.org/xquery/request";
 (: "declare variable ... external" allows to pass $base and $define from an external programm :)
 declare variable $base external;
 declare variable $define external; 
+declare variable $defineversion external;
 declare variable $datasetname external;
 (: let $base := '/db/fda_submissions/cdisc01/'
 let $define := 'define2-0-0-example-sdtm.xml'
 let $datasetname := 'EX' :)
+let $definedoc := doc(concat($base,$define))
 (: get the DM dataset :)
-let $dmdatasetname := doc(concat($base,$define))//odm:ItemGroupDef[@Name='DM']/def:leaf/@xlink:href
+let $dmdatasetname := (
+	if($defineversion='2.1') then $definedoc//odm:ItemGroupDef[@Name='DM']/def21:leaf/@xlink:href
+	else $definedoc//odm:ItemGroupDef[@Name='DM']/def:leaf/@xlink:href
+)
 let $dmdataset := concat($base,$dmdatasetname)
 (: get the OIDs of USUBJID and RFXSTDTC :)
 let $usubjoiddm := (
-        for $a in doc(concat($base,$define))//odm:ItemDef[@Name='USUBJID']/@OID 
-        where $a = doc(concat($base,$define))//odm:ItemGroupDef[@Name='DM']/odm:ItemRef/@ItemOID
+        for $a in $definedoc//odm:ItemDef[@Name='USUBJID']/@OID 
+        where $a = $definedoc//odm:ItemGroupDef[@Name='DM']/odm:ItemRef/@ItemOID
         return $a
     )
 let $rfxstdtcoid := (
-    for $a in doc(concat($base,$define))//odm:ItemDef[@Name='RFXSTDTC']/@OID 
-    where $a = doc(concat($base,$define))//odm:ItemGroupDef[@Name='DM']/odm:ItemRef/@ItemOID
+    for $a in $definedoc//odm:ItemDef[@Name='RFXSTDTC']/@OID 
+    where $a = $definedoc//odm:ItemGroupDef[@Name='DM']/odm:ItemRef/@ItemOID
     return $a
 )
 (: return <test>{data($usubjoid)} - {data($rfxstdtcoid)}</test>):)
@@ -50,18 +56,21 @@ let $usubjidrfxstdtcpairs := (
 (: get the OID of EXSTDTC or EGSTDTC :)
 let $stdtcname := concat($datasetname,'STDTC')
 let $stdtcoid := (
-    for $a in doc(concat($base,$define))//odm:ItemDef[@Name=$stdtcname]/@OID 
-    where $a = doc(concat($base,$define))//odm:ItemGroupDef[@Name=$datasetname]/odm:ItemRef/@ItemOID
+    for $a in $definedoc//odm:ItemDef[@Name=$stdtcname]/@OID 
+    where $a = $definedoc//odm:ItemGroupDef[@Name=$datasetname]/odm:ItemRef/@ItemOID
     return $a
 )
 (: get the OID of USUBJID in EX or EC :)
 let $usubjidoid := (
-    for $a in doc(concat($base,$define))//odm:ItemDef[@Name='USUBJID']/@OID 
-    where $a = doc(concat($base,$define))//odm:ItemGroupDef[@Name=$datasetname]/odm:ItemRef/@ItemOID
+    for $a in $definedoc//odm:ItemDef[@Name='USUBJID']/@OID 
+    where $a = $definedoc//odm:ItemGroupDef[@Name=$datasetname]/odm:ItemRef/@ItemOID
     return $a
 )
 (: get the EX or EC dataset :)
-let $ecexdataset := doc(concat($base,$define))//odm:ItemGroupDef[@Name=$datasetname][@Name='EX' or @Name='EC']/def:leaf/@xlink:href
+let $ecexdataset := (
+	if($defineversion='2.1') then $definedoc//odm:ItemGroupDef[@Name=$datasetname][@Name='EX' or @Name='EC']/def21:leaf/@xlink:href
+	else $definedoc//odm:ItemGroupDef[@Name=$datasetname][@Name='EX' or @Name='EC']/def:leaf/@xlink:href
+)
 let $ecexdoc := doc(concat($base,$ecexdataset))
 (: now iterate over all records in EX or EC that have a --STDTC :)
 for $record in $ecexdoc//odm:ItemGroupData[odm:ItemData[@ItemOID=$stdtcoid]]

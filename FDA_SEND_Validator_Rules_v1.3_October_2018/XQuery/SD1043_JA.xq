@@ -17,35 +17,44 @@ All values of Short Name of Measurement, Test or Examination (--TESTCD) should b
 (: Using a "GROUP BY", the speed is enormously improved  :)
 xquery version "3.0";
 declare namespace def = "http://www.cdisc.org/ns/def/v2.0";
+declare namespace def21 = "http://www.cdisc.org/ns/def/v2.1";
 declare namespace odm="http://www.cdisc.org/ns/odm/v1.3";
 declare namespace data="http://www.cdisc.org/ns/Dataset-XML/v1.0";
 declare namespace xlink="http://www.w3.org/1999/xlink";
 (: "declare variable ... external" allows to pass $base and $define from an external programm :)
 declare variable $base external; 
 declare variable $define external; 
+declare variable $defineversion external;
 (: let $base := '/db/fda_submissions/cdisc01/' :)
 (: let $define := 'define2-0-0-example-sdtm.xml' :)
+let $definedoc := doc(concat($base,$define))
 (: iterate over all datasets that have --TESTCD and --TEST :)
-for $dataset in doc(concat($base,$define))//odm:ItemGroupDef
+for $dataset in $definedoc//odm:ItemGroupDef
     let $name := $dataset/@Name
-    let $datasetname := $dataset/def:leaf/@xlink:href
-    let $datasetlocation := concat($base,$datasetname)
+	let $datasetname := (
+		if($defineversion='2.1') then $dataset/def21:leaf/@xlink:href
+		else $dataset/def:leaf/@xlink:href
+	)
+    let $datasetdoc := (
+		if($datasetname) then doc(concat($base,$datasetname))
+		else ()
+	)
     (: and get the OID of --TESTCD and --TEST :)
     let $testcdoid := (
-        for $a in doc(concat($base,$define))//odm:ItemDef[ends-with(@Name,'TESTCD')]/@OID 
-        where $a = doc(concat($base,$define))//odm:ItemGroupDef[@Name=$name]/odm:ItemRef/@ItemOID
+        for $a in $definedoc//odm:ItemDef[ends-with(@Name,'TESTCD')]/@OID 
+        where $a = $definedoc//odm:ItemGroupDef[@Name=$name]/odm:ItemRef/@ItemOID
         return $a 
     )
-    let $testcdname := doc(concat($base,$define))//odm:ItemDef[@OID=$testcdoid]/@Name
+    let $testcdname := $definedoc//odm:ItemDef[@OID=$testcdoid]/@Name
     let $testoid := (
-        for $a in doc(concat($base,$define))//odm:ItemDef[ends-with(@Name,'TEST')]/@OID 
-        where $a = doc(concat($base,$define))//odm:ItemGroupDef[@Name=$name]/odm:ItemRef/@ItemOID
+        for $a in $definedoc//odm:ItemDef[ends-with(@Name,'TEST')]/@OID 
+        where $a = $definedoc//odm:ItemGroupDef[@Name=$name]/odm:ItemRef/@ItemOID
         return $a 
     )
-    let $testname := doc(concat($base,$define))//odm:ItemDef[@OID=$testoid]/@Name
+    let $testname := $definedoc//odm:ItemDef[@OID=$testoid]/@Name
     (: Group the records by the value of --TEST :)
     let $orderedrecords := (
-        for $record in doc($datasetlocation)//odm:ItemGroupData[odm:ItemData[@ItemOID=$testoid]]
+        for $record in $datasetdoc//odm:ItemGroupData[odm:ItemData[@ItemOID=$testoid]]
             group by 
             $b:=$record/odm:ItemData[@ItemOID=$testoid]/@Value
             return element group {  

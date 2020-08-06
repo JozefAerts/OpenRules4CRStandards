@@ -14,6 +14,7 @@ See the License for the specific language governing permissions and limitations 
 (: Rule SE2312: Pool ID (POOLID) values should match entries in the Pool Definition (POOLDEF) dataset :)
 xquery version "3.0";
 declare namespace def = "http://www.cdisc.org/ns/def/v2.0";
+declare namespace def21 = "http://www.cdisc.org/ns/def/v2.1";
 declare namespace odm="http://www.cdisc.org/ns/odm/v1.3";
 declare namespace data="http://www.cdisc.org/ns/Dataset-XML/v1.0";
 declare namespace xlink="http://www.w3.org/1999/xlink"; 
@@ -27,6 +28,7 @@ declare function functx:is-value-in-sequence
 (: "declare variable ... external" allows to pass $base and $define from an external programm :)
 declare variable $base external;
 declare variable $define external; 
+declare variable $defineversion external;
 (: let $base := 'SEND_3_0_PC201708/'  :)
 (: let $define := 'define.xml' :)
 (: let $base := 'SEND_3_0_PDS2014/' :)
@@ -61,8 +63,14 @@ for $itemgroupdef in $definedoc//odm:ItemGroupDef[@Domain='EX' or starts-with(@N
         return $a
     )
     (: get the dataset location and document :)
-    let $dsloc := $itemgroupdef/def:leaf/@xlink:href
-    let $dsdoc := doc(concat($base,$dsloc))
+	let $dsloc := (
+		if($defineversion='2.1') then $itemgroupdef/def21:leaf/@xlink:href
+		else $itemgroupdef/def:leaf/@xlink:href
+	)
+    let $dsdoc := (
+		if($dsloc) then doc(concat($base,$dsloc))
+		else ()
+	)
     (: iterate over all records in the dataset, 
     and get the value of POOLID :)
     for $record in $dsdoc//odm:ItemGroupData[odm:ItemData[@ItemOID=$dspoolidoid]]

@@ -16,42 +16,50 @@ Start Date/Time of Event, Exposure or Observation (--STDTC) must be less or equa
 :)
 xquery version "3.0";
 declare namespace def = "http://www.cdisc.org/ns/def/v2.0";
+declare namespace def21 = "http://www.cdisc.org/ns/def/v2.1";
 declare namespace odm="http://www.cdisc.org/ns/odm/v1.3";
 declare namespace data="http://www.cdisc.org/ns/Dataset-XML/v1.0";
 declare namespace xlink="http://www.w3.org/1999/xlink";
 (: "declare variable ... external" allows to pass $base and $define from an external programm :)
 declare variable $base external;
 declare variable $define external;
+declare variable $defineversion external;
 declare variable $datasetname external; 
 (: let $base := '/db/fda_submissions/cdisc01/' :)
 (: let $define := 'define2-0-0-example-sdtm.xml' :)
-
+let $definedoc := doc(concat($base,$define))
 (: iterate over all the datasets :)
-for $dataset in doc(concat($base,$define))//odm:ItemGroupDef[@Name=$datasetname]
+for $dataset in $definedoc//odm:ItemGroupDef[@Name=$datasetname]
     let $name := $dataset/@Name
-    let $dsname := $dataset/def:leaf/@xlink:href
-    let $datasetlocation := concat($base,$dsname)
+	let $dsname := (
+		if($defineversion='2.1') then $dataset/def21:leaf/@xlink:href
+		else $dataset/def:leaf/@xlink:href
+	)
+    let $datasetdoc := (
+		if($dsname) then doc(concat($base,$dsname))
+		else ()
+	)
     (: get the prefix for STDTC and ENDTC from either the domain or the dataset name :)
     let $prefix := if($dataset/@Domain) then $dataset/@Domain
         else substring($name,1,2)
     (: Get the OIDs of the --STDTC and --ENDTC variables :)
     (: We must iterate over all xxSTDTC and xxxSTDTC and xxxxSTDTC :)
     let $stdtcoids := (
-        for $a in doc(concat($base,$define))//odm:ItemDef[ends-with(@Name,'STDTC')]/@OID 
-        where $a = doc(concat($base,$define))//odm:ItemGroupDef[@Name=$name]/odm:ItemRef/@ItemOID
+        for $a in $definedoc//odm:ItemDef[ends-with(@Name,'STDTC')]/@OID 
+        where $a = $definedoc//odm:ItemGroupDef[@Name=$name]/odm:ItemRef/@ItemOID
         return $a
     )
     for $stdtcoid in $stdtcoids
-        let $stdtcname :=  doc(concat($base,$define))//odm:ItemDef[@OID=$stdtcoid]/@Name
+        let $stdtcname :=  $definedoc//odm:ItemDef[@OID=$stdtcoid]/@Name
         (: get the corresponding ENDTC :)
         let $endtcoid := (
-            for $a in doc(concat($base,$define))//odm:ItemDef[@Name=replace($stdtcname,'STDTC','ENDTC')]/@OID 
-            where $a = doc(concat($base,$define))//odm:ItemGroupDef[@Name=$name]/odm:ItemRef/@ItemOID
+            for $a in $definedoc//odm:ItemDef[@Name=replace($stdtcname,'STDTC','ENDTC')]/@OID 
+            where $a = $definedoc//odm:ItemGroupDef[@Name=$name]/odm:ItemRef/@ItemOID
             return $a
         )
-        let $endtcname :=  doc(concat($base,$define))//odm:ItemDef[@OID=$endtcoid]/@Name
+        let $endtcname :=  $definedoc//odm:ItemDef[@OID=$endtcoid]/@Name
         (: now iterate over all the records in the dataset that do have an SDTY AND ENDY variable :)
-        for $record in doc($datasetlocation)//odm:ItemGroupData[odm:ItemData[@ItemOID=$stdtcoid] and odm:ItemData[@ItemOID=$endtcoid]]
+        for $record in $datasetdoc//odm:ItemGroupData[odm:ItemData[@ItemOID=$stdtcoid] and odm:ItemData[@ItemOID=$endtcoid]]
             let $recnum := $record/@data:ItemGroupDataSeq
             (: get the values :)
             let $stdtcvalue := $record/odm:ItemData[@ItemOID=$stdtcoid]/@Value

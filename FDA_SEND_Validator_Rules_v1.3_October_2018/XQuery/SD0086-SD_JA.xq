@@ -15,12 +15,14 @@ See the License for the specific language governing permissions and limitations 
 (: OPTIMIZED - made much more faster using "GROUP BY" :)
 xquery version "3.0";
 declare namespace def = "http://www.cdisc.org/ns/def/v2.0";
+declare namespace def21 = "http://www.cdisc.org/ns/def/v2.1";
 declare namespace odm="http://www.cdisc.org/ns/odm/v1.3";
 declare namespace data="http://www.cdisc.org/ns/Dataset-XML/v1.0";
 declare namespace xlink="http://www.w3.org/1999/xlink";
 (: "declare variable ... external" allows to pass $base and $define from an external programm :)
 declare variable $base external;
 declare variable $define external;
+declare variable $defineversion external;
 declare variable $datasetname external;
 (: let $base := '/db/fda_submissions/cdiscpilot01/' :)
 (: let $define := 'define_2_0.xml' :)
@@ -53,8 +55,14 @@ for $itemgroupdef in $definedoc//odm:ItemGroupDef[starts-with(@Name,'SUPP')][@Na
         return $a
     )
 (: get the location of the SUPP-- dataset :)
-let $suppdatasetlocation := $itemgroupdef/def:leaf/@xlink:href
-let $suppdatasetdoc := doc(concat($base,$suppdatasetlocation))
+let $suppdatasetlocation := (
+	if($defineversion='2.1') then $itemgroupdef/def21:leaf/@xlink:href
+	else $itemgroupdef/def:leaf/@xlink:href
+)
+let $suppdatasetdoc := (
+	if($suppdatasetlocation) then doc(concat($base,$suppdatasetlocation))
+	else ()
+)
 (: group the records in the SUPP-- dataset by USUBJID,IDVAR,IDVARVAL,QNAM - there should be only one record per group :)
 let $orderedrecords := (
         for $record in $suppdatasetdoc//odm:ItemGroupData

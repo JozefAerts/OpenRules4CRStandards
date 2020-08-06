@@ -16,29 +16,35 @@ Order of Element within Arm (TAETORD) must have a unique value for a given value
 :)
 xquery version "3.0";
 declare namespace def = "http://www.cdisc.org/ns/def/v2.0";
+declare namespace def21 = "http://www.cdisc.org/ns/def/v2.1";
 declare namespace odm="http://www.cdisc.org/ns/odm/v1.3";
 declare namespace data="http://www.cdisc.org/ns/Dataset-XML/v1.0";
 declare namespace xlink="http://www.w3.org/1999/xlink";
 (: "declare variable ... external" allows to pass $base and $define from an external programm :)
 declare variable $base external;
 declare variable $define external;
+declare variable $defineversion external;
 (: let $base := '/db/fda_submissions/cdisc01/' :)
 (: let $define := 'define2-0-0-example-sdtm.xml' :)
+let $definedoc := doc(concat($base,$define))
 (: Get the TA dataset :)
-let $tadatasetname := doc(concat($base,$define))//odm:ItemGroupDef[@Name='TA']/def:leaf/@xlink:href
+let $tadatasetname := (
+	if($defineversion='2.1') then $definedoc//odm:ItemGroupDef[@Name='TA']/def21:leaf/@xlink:href
+	else $definedoc//odm:ItemGroupDef[@Name='TA']/def:leaf/@xlink:href
+)
 let $tadatasetdoc := (
 	if($tadatasetname) then doc(concat($base,$tadatasetname))
 	else ()
 )
 (: also need to find out the OIDs of ARMCD and TAETORD :)
 let $taarmcdoid := (
-        for $a in doc(concat($base,$define))//odm:ItemDef[@Name='ARMCD']/@OID 
-        where $a = doc(concat($base,$define))//odm:ItemGroupDef[@Name='TA']/odm:ItemRef/@ItemOID
+        for $a in $definedoc//odm:ItemDef[@Name='ARMCD']/@OID 
+        where $a = $definedoc//odm:ItemGroupDef[@Name='TA']/odm:ItemRef/@ItemOID
         return $a
 )
 let $tataetordoid := (
-        for $a in doc(concat($base,$define))//odm:ItemDef[@Name='TAETORD']/@OID 
-        where $a = doc(concat($base,$define))//odm:ItemGroupDef[@Name='TA']/odm:ItemRef/@ItemOID
+        for $a in $definedoc//odm:ItemDef[@Name='TAETORD']/@OID 
+        where $a = $definedoc//odm:ItemGroupDef[@Name='TA']/odm:ItemRef/@ItemOID
         return $a
 )
 (: iterate over all records in the TA dataset :)

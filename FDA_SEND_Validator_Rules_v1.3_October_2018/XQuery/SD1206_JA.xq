@@ -15,29 +15,38 @@ See the License for the specific language governing permissions and limitations 
 only applies to SENDIG v.3.1, not to 3.0 :)
 xquery version "3.0";
 declare namespace def = "http://www.cdisc.org/ns/def/v2.0";
+declare namespace def21 = "http://www.cdisc.org/ns/def/v2.1";
 declare namespace odm="http://www.cdisc.org/ns/odm/v1.3";
 declare namespace data="http://www.cdisc.org/ns/Dataset-XML/v1.0";
 declare namespace xlink="http://www.w3.org/1999/xlink";
 (: "declare variable ... external" allows to pass $base and $define from an external programm :)
 declare variable $base external;
 declare variable $define external;
+declare variable $defineversion external;
 (: let $base := '/db/fda_submissions/cdisc01/' 
 let $define := 'define2-0-0-example-sdtm.xml' :)
+let $definedoc := doc(concat($base,$define))
 (: get the DM dataset and the OID of DM.RFXENDTC (Date/Time of Last Study Treatment)  :)
-let $dmdef := doc(concat($base,$define))//odm:ItemGroupDef[@Name='DM']
+let $dmdef := $definedoc//odm:ItemGroupDef[@Name='DM']
 (: and get the location and the DM document itself :)
-let $dmlocation := $dmdef/def:leaf/@xlink:href
-let $dmdoc := doc(concat($base,$dmlocation))
+let $dmlocation := (
+	if($defineversion='2.1') then $dmdef/def21:leaf/@xlink:href
+	else $dmdef/def:leaf/@xlink:href
+)
+let $dmdoc := (
+	if($dmlocation) then doc(concat($base,$dmlocation))
+	else ()
+)
 (: we also need the OID of USUBJID in DM :)
 let $dmusubjidoid := (
-    for $a in doc(concat($base,$define))//odm:ItemDef[@Name='USUBJID']/@OID 
-        where $a = doc(concat($base,$define))//odm:ItemGroupDef[@Name='DM']/odm:ItemRef/@ItemOID
+    for $a in $definedoc//odm:ItemDef[@Name='USUBJID']/@OID 
+        where $a = $definedoc//odm:ItemGroupDef[@Name='DM']/odm:ItemRef/@ItemOID
         return $a
 )
 (: and of RFXENDTC :)
 let $rfxendtcoid := (
-    for $a in doc(concat($base,$define))//odm:ItemDef[@Name='RFXENDTC']/@OID 
-        where $a = doc(concat($base,$define))//odm:ItemGroupDef[@Name='DM']/odm:ItemRef/@ItemOID
+    for $a in $definedoc//odm:ItemDef[@Name='RFXENDTC']/@OID 
+        where $a = $definedoc//odm:ItemGroupDef[@Name='DM']/odm:ItemRef/@ItemOID
         return $a
 )
 (: create a temporary structure containing USUBJID and RFPENDTC :)
@@ -48,20 +57,23 @@ let $usubjidrfxendtcpairs := (
     return <record usubjid="{$usubjid}" rfxendtc="{$rfxendtc}" />
 )
 (: iterate over all EX datasets :)
-for $datasetdef in doc(concat($base,$define))//odm:ItemGroupDef[@Domain='EX' or starts-with(@Name,'EX')]
+for $datasetdef in $definedoc//odm:ItemGroupDef[@Domain='EX' or starts-with(@Name,'EX')]
     (: get the dataset name :)
     let $name := $datasetdef/@Name
     let $domain := $datasetdef/@Domain
     (: get the datasetlocation :)
-    let $datasetlocation := $datasetdef/def:leaf/@xlink:href
+	let $datasetlocation := (
+		if($defineversion='2.1') then $datasetdef/def21:leaf/@xlink:href
+		else $datasetdef/def:leaf/@xlink:href
+	)
     (: we need the OID of USUBJID and of the EXSTDTC variable :)
     let $exstdtcoid := (
-        for $a in doc(concat($base,$define))//odm:ItemDef[@Name='EXSTDTC']/@OID 
+        for $a in $definedoc//odm:ItemDef[@Name='EXSTDTC']/@OID 
         where $a = $datasetdef/odm:ItemRef/@ItemOID
         return $a
     )
     let $usubjidoid := (
-        for $a in doc(concat($base,$define))//odm:ItemDef[@Name='USUBJID']/@OID 
+        for $a in $definedoc//odm:ItemDef[@Name='USUBJID']/@OID 
         where $a = $datasetdef/odm:ItemRef/@ItemOID
         return $a
     )

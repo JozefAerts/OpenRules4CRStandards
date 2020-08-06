@@ -16,12 +16,14 @@ Paired variables such as TEST/TESTCD must be populated using terms with the same
 (: The rule will only be implemented on TESTCD-TEST pairs :)
 xquery version "3.0";
 declare namespace def = "http://www.cdisc.org/ns/def/v2.0";
+declare namespace def21 = "http://www.cdisc.org/ns/def/v2.1";
 declare namespace odm="http://www.cdisc.org/ns/odm/v1.3";
 declare namespace data="http://www.cdisc.org/ns/Dataset-XML/v1.0";
 declare namespace xlink="http://www.w3.org/1999/xlink";
 (: "declare variable ... external" allows to pass $base and $define from an external programm :)
 declare variable $base external;
 declare variable $define external; 
+declare variable $defineversion external;
 (: let $base := '/db/fda_submissions/cdisc01/' 
 let $define := 'define2-0-0-example-sdtm.xml' :)
 (: get the define.xml document :)
@@ -50,9 +52,15 @@ for $datasetdef in $definedoc//odm:ItemGroupDef
     let $testcdcodelist := $definedoc//odm:CodeList[@OID=$testcdcodelistoid]  (: this is an XML structure :)
     let $testcodelist := $definedoc//odm:CodeList[@OID=$testcodelistoid]  (: this is an XML structure :)
     (: get the location of the dataset :)
-    let $datasetlocation := $datasetdef/def:leaf/@xlink:href
+	let $datasetlocation := (
+		if($defineversion='2.1') then $datasetdef/def21:leaf/@xlink:href
+		else $datasetdef/def:leaf/@xlink:href
+	)
     (: and the dataset document itself :)
-    let $datasetdoc := doc(concat($base,$datasetlocation))
+    let $datasetdoc := (
+		if($datasetlocation) then doc(concat($base,$datasetlocation))
+		else ()
+	)
     (: iterate over all the records in the dataset, at least when TESTCD and TEST have been defined for the dataset :)
     for $record in $datasetdoc[$testcdoid and $testoid]//odm:ItemGroupData
         let $recnum := $record/@data:ItemGroupDataSeq

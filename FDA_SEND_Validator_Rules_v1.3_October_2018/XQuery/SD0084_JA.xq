@@ -16,27 +16,35 @@ The value of Age (AGE) cannot be less than 0
 :)
 xquery version "3.0";
 declare namespace def = "http://www.cdisc.org/ns/def/v2.0";
+declare namespace def21 = "http://www.cdisc.org/ns/def/v2.1";
 declare namespace odm="http://www.cdisc.org/ns/odm/v1.3";
 declare namespace data="http://www.cdisc.org/ns/Dataset-XML/v1.0";
 declare namespace xlink="http://www.w3.org/1999/xlink";
 (: "declare variable ... external" allows to pass $base and $define from an external programm :)
 declare variable $base external;
 declare variable $define external; 
+declare variable $defineversion external;
 (: let $base := '/db/fda_submissions/cdisc01/' :)
 (: let $define := 'define2-0-0-example-sdtm.xml' :)
-
+let $definedoc := doc(concat($base,$define))
 (: Get the DM dataset :)
-let $dmdataset := doc(concat($base,$define))//odm:ItemGroupDef[@Name='DM']
-    let $dmdatasetname := $dmdataset/def:leaf/@xlink:href
-    let $dmdatasetlocation := concat($base,$dmdatasetname)
+let $dmdataset := $definedoc//odm:ItemGroupDef[@Name='DM']
+	let $dmdatasetname := (
+		if($defineversion='2.1') then $dmdataset/def21:leaf/@xlink:href
+		else $dmdataset/def:leaf/@xlink:href
+	)
+    let $dmdatasetdoc := (
+		if($dmdatasetname) then doc(concat($base,$dmdatasetname))
+		else ()
+	)
     (: find the OID of the AGE variable :)
     let $ageoid := (
-        for $a in doc(concat($base,$define))//odm:ItemDef[@Name='AGE']/@OID 
-        where $a = doc(concat($base,$define))//odm:ItemGroupDef[@Name='DM']/odm:ItemRef/@ItemOID
+        for $a in $definedoc//odm:ItemDef[@Name='AGE']/@OID 
+        where $a = $definedoc//odm:ItemGroupDef[@Name='DM']/odm:ItemRef/@ItemOID
         return $a 
     )
     (: now iterate over all in the dataset itself :)
-    for $record in doc($dmdatasetlocation)//odm:ItemGroupData
+    for $record in $dmdatasetdoc//odm:ItemGroupData
         let $recnum := $record/@data:ItemGroupDataSeq
         (: and get the value :)
         let $agevalue := $record/odm:ItemData[@ItemOID=$ageoid]/@Value

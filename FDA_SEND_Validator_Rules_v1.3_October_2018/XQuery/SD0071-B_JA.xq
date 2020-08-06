@@ -16,6 +16,7 @@ See the License for the specific language governing permissions and limitations 
 SD0071B for withdrawn subjects :)
 xquery version "3.0";
 declare namespace def = "http://www.cdisc.org/ns/def/v2.0";
+declare namespace def21 = "http://www.cdisc.org/ns/def/v2.1";
 declare namespace odm="http://www.cdisc.org/ns/odm/v1.3";
 declare namespace data="http://www.cdisc.org/ns/Dataset-XML/v1.0";
 declare namespace xlink="http://www.w3.org/1999/xlink";
@@ -23,6 +24,7 @@ declare namespace functx = "http://www.functx.com";
 (: "declare variable ... external" allows to pass $base and $define from an external programm :)
 declare variable $base external; 
 declare variable $define external;
+declare variable $defineversion external;
 (: function to find out whether a value is in a sequence (array) :)
 declare function functx:is-value-in-sequence
   ( $value as xs:anyAtomicType? ,
@@ -31,18 +33,21 @@ declare function functx:is-value-in-sequence
 } ;
 (: let $base := '/db/fda_submissions/cdiscpilot01/' 
 let $define := 'define_2_0.xml' :)
-
+let $definedoc := doc(concat($base,$define))
 (: get the TA dataset and the ARM OID in TA :)
-let $tadataset := doc(concat($base,$define))//odm:ItemGroupDef[@Name='TA']
-let $tadatasetname := $tadataset/def:leaf/@xlink:href
+let $tadataset := $definedoc//odm:ItemGroupDef[@Name='TA']
+let $tadatasetname := (
+	if($defineversion='2.1') then $tadataset/def21:leaf/@xlink:href
+	else $tadataset/def:leaf/@xlink:href
+)
 let $tadatasetdoc :=  (
-	if($tadatasetname) then doc(concat($base,tadatasetname))
+	if($tadatasetname) then doc(concat($base,$tadatasetname))
 	else ()
 )
 (: get the OID of ARM in TA :)
 let $armfromtaoid := (
-    for $a in doc(concat($base,$define))//odm:ItemDef[@Name='ARM']/@OID 
-    where $a = doc(concat($base,$define))//odm:ItemGroupDef[@Name='TA']/odm:ItemRef/@ItemOID
+    for $a in $definedoc//odm:ItemDef[@Name='ARM']/@OID 
+    where $a = $definedoc//odm:ItemGroupDef[@Name='TA']/odm:ItemRef/@ItemOID
     return $a
 )
 (: make an array/sequence with all TA-ARM values, take it from the dataset itself, not from the define.xml codelist :)
@@ -52,17 +57,23 @@ let $armsequence := distinct-values(
 )
 
 (: Get the DM dataset :)
-for $dataset in doc(concat($base,$define))//odm:ItemGroupDef[@Name='DM']
-    let $datasetname := $dataset/def:leaf/@xlink:href
-    let $datasetlocation := concat($base,$datasetname)
+for $dataset in $definedoc//odm:ItemGroupDef[@Name='DM']
+	let $datasetname := (
+		if($defineversion='2.1') then $dataset/def21:leaf/@xlink:href
+		else $dataset/def:leaf/@xlink:href
+	)
+    let $datasetdoc := (
+		if($datasetname) then doc(concat($base,$datasetname))
+		else ()
+	)
     (: get the OID of the ARM :)
     let $armoid := (
-        for $a in doc(concat($base,$define))//odm:ItemDef[@Name='ARM']/@OID 
-        where $a = doc(concat($base,$define))//odm:ItemGroupDef[@Name='DM']/odm:ItemRef/@ItemOID
+        for $a in $definedoc//odm:ItemDef[@Name='ARM']/@OID 
+        where $a = $definedoc//odm:ItemGroupDef[@Name='DM']/odm:ItemRef/@ItemOID
         return $a
     )
     (: iterate over all the records in the DM dataset that have ARM populated :)
-    for $record in doc($datasetlocation)//odm:ItemGroupData[odm:ItemData[@ItemOID=$armoid]]
+    for $record in $datasetdoc//odm:ItemGroupData[odm:ItemData[@ItemOID=$armoid]]
         let $recnum := $record/@data:ItemGroupDataSeq
         (: get the value of ARM :)
         let $armvalue := $record/odm:ItemData[@ItemOID=$armoid]/@Value

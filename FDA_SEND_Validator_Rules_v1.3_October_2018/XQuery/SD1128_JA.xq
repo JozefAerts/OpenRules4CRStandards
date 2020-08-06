@@ -19,30 +19,39 @@ or either has the value "ONE" or "MANY"
 :)
 xquery version "3.0";
 declare namespace def = "http://www.cdisc.org/ns/def/v2.0";
+declare namespace def21 = "http://www.cdisc.org/ns/def/v2.1";
 declare namespace odm="http://www.cdisc.org/ns/odm/v1.3";
 declare namespace data="http://www.cdisc.org/ns/Dataset-XML/v1.0";
 declare namespace xlink="http://www.w3.org/1999/xlink";
 (: "declare variable ... external" allows to pass $base and $define from an external programm :)
 declare variable $base external;
 declare variable $define external;
+declare variable $defineversion external;
 (: let $base := '/db/fda_submissions/cdiscpilot01/' :)
 (: let $define := 'define_2_0.xml' :)
 (: let $base := '/db/fda_submissions/cdisc01/' :)
 (: let $define := 'define2-0-0-example-sdtm.xml' :)
+let $definedoc := doc(concat($base,$define))
 (: iterate over all RELREC datasets in the define.xml - 
  usually there will be only one :)
-for $itemgroup in doc(concat($base,$define))//odm:ItemGroupDef[@Name='RELREC']
+for $itemgroup in $definedoc//odm:ItemGroupDef[@Name='RELREC']
     (: get the dataset name and location :)
-    let $datasetname := $itemgroup/def:leaf/@xlink:href
-    let $dataset := concat($base,$datasetname)
+	let $datasetname := (
+		if($defineversion='2.1') then $itemgroup/def21:leaf/@xlink:href
+		else $itemgroup/def:leaf/@xlink:href
+	)
+    let $datasetdoc := (
+		if($datasetname) then doc(concat($base,$datasetname))
+		else ()
+	)
     (: get the OID of the "RELTYPE" variable :)
     let $reltypeoid := (
-    for $a in doc(concat($base,$define))//odm:ItemDef[@Name='RELTYPE']/@OID 
+    for $a in $definedoc//odm:ItemDef[@Name='RELTYPE']/@OID 
     where $a = $itemgroup/odm:ItemRef/@ItemOID 
     return $a 
     )
     (: now iterate over all RELREC records for which there IS a RELTYPE datapoint :)
-    for $record in doc($dataset)//odm:ItemGroupData[odm:ItemData[@ItemOID=$reltypeoid]]
+    for $record in $datasetdoc//odm:ItemGroupData[odm:ItemData[@ItemOID=$reltypeoid]]
         (: get the record number and the value for RELTYPE :)
         let $recnum := $record/@data:ItemGroupDataSeq
         let $value := $record/odm:ItemData[@ItemOID=$reltypeoid]/@Value

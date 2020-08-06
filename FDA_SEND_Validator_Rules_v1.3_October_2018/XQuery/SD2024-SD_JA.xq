@@ -16,45 +16,51 @@ See the License for the specific language governing permissions and limitations 
 xquery version "3.0";
 (: POOLID is e.g. used in RELREC :)
 declare namespace def = "http://www.cdisc.org/ns/def/v2.0";
+declare namespace def21 = "http://www.cdisc.org/ns/def/v2.1";
 declare namespace odm="http://www.cdisc.org/ns/odm/v1.3";
 declare namespace data="http://www.cdisc.org/ns/Dataset-XML/v1.0";
 declare namespace xlink="http://www.w3.org/1999/xlink";
 (: "declare variable ... external" allows to pass $base and $define from an external programm :)
 declare variable $base external;
 declare variable $define external;
+declare variable $defineversion external;
 declare variable $datasetname external; 
 (: let $base := '/db/fda_submissions/cdisc01/'  
 let $define := 'define2-0-0-example-sdtm.xml'  :)
+let $definedoc := doc(concat($base,$define))
 (: EITHER provide $domain=:'ALL', meaning: validate for all domains referenced from the define.xml OR:
 $domain:='XX' where XX is a specific domain, MEANING validate for a single domain only :)
 (:  get the definitions for the domains (ItemGroupDefs in define.xml) :)
-(:  let $datasets := (
-    if($domain != 'ALL') then doc(concat($base,$define))//odm:ItemGroupDef[@Domain=$domain]
-    else doc(concat($base,$define))//odm:ItemGroupDef
-) :)
-(: now iterate over all dataset provided definitions in the define.xm and get the USUBJID :)
-for $itemgroupdef in doc(concat($base,$define))//odm:ItemGroupDef[@Name=$datasetname][upper-case(@def:Class)='INTERVENTIONS' or upper-case(@def:Class)='EVENTS' or upper-case(@def:Class)='FINDINGS']
+(: Iterate over all dataset provided definitions in the define.xm and get the USUBJID :)
+for $itemgroupdef in $definedoc//odm:ItemGroupDef[@Name=$datasetname][upper-case(@def:Class)='INTERVENTIONS' or upper-case(@def:Class)='EVENTS' or upper-case(@def:Class)='FINDINGS'
+		or upper-case(./def21:Class/@Name)='INTERVENTIONS' or upper-case(./def21:Class/@Name)='EVENTS' or upper-case(./def21:Class/@Name)='FINDINGS']
     let $name := $itemgroupdef/@Name
-    let $datasetlink := $itemgroupdef/def:leaf/@xlink:href
-    let $datasetpath := concat($base,$datasetlink)
+	let $datasetlink := (
+		if($defineversion='2.1') then $itemgroupdef/def21:leaf/@xlink:href
+		else $itemgroupdef/def:leaf/@xlink:href
+	)
+    let $datasetdoc := (
+		if($datasetlink) then  doc(concat($base,$datasetlink))
+		else ()
+	)
     (: get the OID of the POOLID and the USUBJID variables :)
     let $poolidoid := (
-        for $a in doc(concat($base,$define))//odm:ItemDef[@Name='POOLID']/@OID 
-        where $a = doc(concat($base,$define))//odm:ItemGroupDef[@Name=$name]/odm:ItemRef/@ItemOID
+        for $a in $definedoc//odm:ItemDef[@Name='POOLID']/@OID 
+        where $a = $definedoc//odm:ItemGroupDef[@Name=$name]/odm:ItemRef/@ItemOID
         return $a
     ) 
     let $usubjidoid := (
-        for $a in doc(concat($base,$define))//odm:ItemDef[@Name='USUBJID']/@OID 
-        where $a = doc(concat($base,$define))//odm:ItemGroupDef[@Name=$name]/odm:ItemRef/@ItemOID
+        for $a in $definedoc//odm:ItemDef[@Name='USUBJID']/@OID 
+        where $a = $definedoc//odm:ItemGroupDef[@Name=$name]/odm:ItemRef/@ItemOID
         return $a
     ) 
     (: iterate over all the records, but only when USUBJID and POOLID have been defined :)
-    for $record in doc($datasetpath)[$usubjidoid and $poolidoid]//odm:ItemGroupData
+    for $record in $datasetdoc[$usubjidoid and $poolidoid]//odm:ItemGroupData
         let $recnum := $record/@data:ItemGroupDataSeq
         (: get the values of POOLID and USUBJID (if any) :)
         let $poolid := $record/odm:ItemData[@ItemOID=$poolidoid]/@Value
         let $usubjid := $record/odm:ItemData[@ItemOID=$usubjidoid]/@Value
-		
+		(: generate the message :)
 		let $message := (
 		    (: case that both USUBJID AND POOLID are populated :)
             if(string-length($poolid) > 0 and string-length($usubjid) > 0) then

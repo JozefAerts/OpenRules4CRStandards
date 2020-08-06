@@ -16,28 +16,37 @@ Non-missing Dose (--DOSE) value must be greater than or equal to 0
 :)
 xquery version "3.0";
 declare namespace def = "http://www.cdisc.org/ns/def/v2.0";
+declare namespace def21 = "http://www.cdisc.org/ns/def/v2.1";
 declare namespace odm="http://www.cdisc.org/ns/odm/v1.3";
 declare namespace data="http://www.cdisc.org/ns/Dataset-XML/v1.0";
 declare namespace xlink="http://www.w3.org/1999/xlink";
 (: "declare variable ... external" allows to pass $base and $define from an external programm :)
 declare variable $base external;
 declare variable $define external; 
+declare variable $defineversion external;
 (: let $base := '/db/fda_submissions/cdisc01/' :)
 (: let $define := 'define2-0-0-example-sdtm.xml' :)
 (: iterate over all datasets that have a --DOSE variable - Limit to @def:Class=INTERVENTIONS ? :)
-for $dataset in doc(concat($base,$define))//odm:ItemGroupDef[upper-case(@def:Class)='INTERVENTIONS']
+let $definedoc := doc(concat($base,$define))
+for $dataset in $definedoc//odm:ItemGroupDef[upper-case(@def:Class)='INTERVENTIONS' or upper-case(./def21:Class/@Name)='INTERVENTIONS']
     let $name := $dataset/@Name
-    let $datasetname := $dataset/def:leaf/@xlink:href
-    let $datasetlocation := concat($base,$datasetname)
+	let $datasetname := (
+		if($defineversion='2.1') then $dataset/def21:leaf/@xlink:href
+		else $dataset/def:leaf/@xlink:href
+	)
+    let $datasetdoc := (
+		if($datasetname) then doc(concat($base,$datasetname))
+		else ()
+	)
     (: find the OID of the --DOSE variable :)
     let $doseoid := (
-        for $a in doc(concat($base,$define))//odm:ItemDef[ends-with(@Name,'DOSE')]/@OID 
-        where $a = doc(concat($base,$define))//odm:ItemGroupDef[@Name=$name]/odm:ItemRef/@ItemOID
+        for $a in $definedoc//odm:ItemDef[ends-with(@Name,'DOSE')]/@OID 
+        where $a =	$definedoc//odm:ItemGroupDef[@Name=$name]/odm:ItemRef/@ItemOID
         return $a 
     )
-    let $dosename := doc(concat($base,$define))//odm:ItemDef[@OID=$doseoid]/@Name
+    let $dosename := $definedoc//odm:ItemDef[@OID=$doseoid]/@Name
     (: now iterate over all in the dataset itself :)
-    for $record in doc($datasetlocation)//odm:ItemGroupData
+    for $record in $datasetdoc//odm:ItemGroupData
         let $recnum := $record/@data:ItemGroupDataSeq
         (: and get the value :)
         let $dosevalue := $record/odm:ItemData[@ItemOID=$doseoid]/@Value

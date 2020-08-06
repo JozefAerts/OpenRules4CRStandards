@@ -18,27 +18,35 @@ Age Range (AGETXT) variable values should be populated with 'number-number' form
 (: Remark: regular expression was tested using: https://regex101.com/  :)
 xquery version "3.0";
 declare namespace def = "http://www.cdisc.org/ns/def/v2.0";
+declare namespace def21 = "http://www.cdisc.org/ns/def/v2.1";
 declare namespace odm="http://www.cdisc.org/ns/odm/v1.3";
 declare namespace data="http://www.cdisc.org/ns/Dataset-XML/v1.0";
 declare namespace xlink="http://www.w3.org/1999/xlink";
 (: "declare variable ... external" allows to pass $base and $define from an external programm :)
 declare variable $base external;
 declare variable $define external; 
+declare variable $defineversion external;
 (: let $base := '/db/fda_submissions/cdisc01/' :)
 (: let $define := 'define2-0-0-example-sdtm.xml' :)
-
+let $definedoc := doc(concat($base,$define))
 (: Get the DM dataset :)
-for $dataset in doc(concat($base,$define))//odm:ItemGroupDef[@Name='DM']
-    let $datasetname := $dataset/def:leaf/@xlink:href
-    let $datasetlocation := concat($base,$datasetname)
+for $dataset in $definedoc//odm:ItemGroupDef[@Name='DM']
+	let $datasetname := (
+		if($defineversion='2.1') then $dataset/def21:leaf/@xlink:href
+		else $dataset/def:leaf/@xlink:href
+	)
+    let $datasetdoc := (
+		if($datasetname) then doc(concat($base,$datasetname))
+		else ()
+	)
     (: get the OID of the AGETXT variable  :)
     let $agetxtoid := (
-        for $a in doc(concat($base,$define))//odm:ItemDef[@Name='AGETXT']/@OID 
-        where $a = doc(concat($base,$define))//odm:ItemGroupDef[@Name='DM']/odm:ItemRef/@ItemOID
+        for $a in $definedoc//odm:ItemDef[@Name='AGETXT']/@OID 
+        where $a = $definedoc//odm:ItemGroupDef[@Name='DM']/odm:ItemRef/@ItemOID
         return $a
     )
     (: iterate over all records where AGETXT is populated :)
-    for $record in doc($datasetlocation)//odm:ItemGroupData[odm:ItemData[@ItemOID=$agetxtoid]]
+    for $record in $datasetdoc//odm:ItemGroupData[odm:ItemData[@ItemOID=$agetxtoid]]
         let $recnum := $record/@data:ItemGroupDataSeq
         (: get the value of AGETXT :)
         let $agetxtvalue := $record/odm:ItemData[@ItemOID=$agetxtoid]/@Value

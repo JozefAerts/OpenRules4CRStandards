@@ -15,48 +15,60 @@ See the License for the specific language governing permissions and limitations 
 The combination of Element Code (ETCD) and Description of Element (ELEMENT) values should match entries in the Trial Elements (TE) dataset, except for unplanned Element (ETCD = 'UNPLAN') - dataset SE,TA :)
 xquery version "3.0";
 declare namespace def = "http://www.cdisc.org/ns/def/v2.0";
+declare namespace def21 = "http://www.cdisc.org/ns/def/v2.1";
 declare namespace odm="http://www.cdisc.org/ns/odm/v1.3";
 declare namespace data="http://www.cdisc.org/ns/Dataset-XML/v1.0";
 declare namespace xlink="http://www.w3.org/1999/xlink";
 (: "declare variable ... external" allows to pass $base and $define from an external programm :)
 declare variable $base external;
 declare variable $define external;
+declare variable $defineversion external;
 (: let $base := '/db/fda_submissions/cdisc01/' :)
 (: let $define := 'define2-0-0-example-sdtm.xml' :)
+let $definedoc := doc(concat($base,$define))
 (: Get the TE dataset :)
-let $tedatasetname := doc(concat($base,$define))//odm:ItemGroupDef[@Name='TE']/def:leaf/@xlink:href
+let $tedatasetname := (
+	if($defineversion='2.1') then $definedoc//odm:ItemGroupDef[@Name='TE']/def21:leaf/@xlink:href
+	else $definedoc//odm:ItemGroupDef[@Name='TE']/def:leaf/@xlink:href
+)
 let $tedatasetlocation := concat($base,$tedatasetname)
 (: Get the OID of ETCD and ELEMENT in the TE dataset :)
 let $teetcdoid := (
-    for $a in doc(concat($base,$define))//odm:ItemDef[@Name='ETCD']/@OID 
-    where $a = doc(concat($base,$define))//odm:ItemGroupDef[@Name='TE']/odm:ItemRef/@ItemOID
+    for $a in $definedoc//odm:ItemDef[@Name='ETCD']/@OID 
+    where $a = $definedoc//odm:ItemGroupDef[@Name='TE']/odm:ItemRef/@ItemOID
     return $a
 )
 let $teelementoid := (
-    for $a in doc(concat($base,$define))//odm:ItemDef[@Name='ELEMENT']/@OID 
-    where $a = doc(concat($base,$define))//odm:ItemGroupDef[@Name='TE']/odm:ItemRef/@ItemOID
+    for $a in $definedoc//odm:ItemDef[@Name='ELEMENT']/@OID 
+    where $a = $definedoc//odm:ItemGroupDef[@Name='TE']/odm:ItemRef/@ItemOID
     return $a
 )
 (: Get the TA and SE datasets :)
-let $datasets := doc(concat($base,$define))//odm:ItemGroupDef[@Name='TA' or @Name='SE']
+let $datasets := $definedoc//odm:ItemGroupDef[@Name='TA' or @Name='SE']
 (: iterate over these datasets :)
 for $dataset in $datasets
     let $name := $dataset/@Name
-    let $datasetname := $dataset/def:leaf/@xlink:href
-    let $datasetlocation := concat($base,$datasetname)
+	let $datasetname := (
+		if($defineversion='2.1') then $dataset/def21:leaf/@xlink:href
+		else $dataset/def:leaf/@xlink:href
+	)
+    let $datasetdoc := (
+		if($datasetname) then doc(concat($base,$datasetname))
+		else ()
+	)
     (: Get the OIDs of the ETCD and ELEMENT variables in the TA or SE datasets :)
     let $etcdoid := (
-        for $a in doc(concat($base,$define))//odm:ItemDef[@Name='ETCD']/@OID 
-        where $a = doc(concat($base,$define))//odm:ItemGroupDef[@Name=$name]/odm:ItemRef/@ItemOID
+        for $a in $definedoc//odm:ItemDef[@Name='ETCD']/@OID 
+        where $a = $definedoc//odm:ItemGroupDef[@Name=$name]/odm:ItemRef/@ItemOID
         return $a
     )
     let $elementoid := (
-        for $a in doc(concat($base,$define))//odm:ItemDef[@Name='ELEMENT']/@OID 
-        where $a = doc(concat($base,$define))//odm:ItemGroupDef[@Name=$name]/odm:ItemRef/@ItemOID
+        for $a in $definedoc//odm:ItemDef[@Name='ELEMENT']/@OID 
+        where $a = $definedoc//odm:ItemGroupDef[@Name=$name]/odm:ItemRef/@ItemOID
         return $a
     )
     (: iterate over all the records in the dataset :)
-    for $record in doc($datasetlocation)//odm:ItemGroupData
+    for $record in $datasetdoc//odm:ItemGroupData
         let $recnum := $record/@data:ItemGroupDataSeq
         (: and get the value for ETCD and ELEMENT :)
         let $etcdvalue := $record/odm:ItemData[@ItemOID=$etcdoid]/@Value

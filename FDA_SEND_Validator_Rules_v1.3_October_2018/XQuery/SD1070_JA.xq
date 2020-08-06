@@ -16,44 +16,52 @@ All values of a Parameter Short Name (--PARMCD) variables should be the same for
 :)
 xquery version "3.0";
 declare namespace def = "http://www.cdisc.org/ns/def/v2.0";
+declare namespace def21 = "http://www.cdisc.org/ns/def/v2.1";
 declare namespace odm="http://www.cdisc.org/ns/odm/v1.3";
 declare namespace data="http://www.cdisc.org/ns/Dataset-XML/v1.0";
 declare namespace xlink="http://www.w3.org/1999/xlink";
 (: "declare variable ... external" allows to pass $base and $define from an external programm :)
 declare variable $base external;
 declare variable $define external; 
+declare variable $defineversion external;
  
 (: let $base := '/db/fda_submissions/cdisc01/' :)
 (: let $define := 'define2-0-0-example-sdtm.xml' :)
-
+let $definedoc := doc(concat($base,$define))
 (: Remark that rules SD1069 and SD1070 could easily be combined into a single rule :)
 
 (: iterate over all TS datasets in the define.xml - 
  usually there will be only one :)
-for $itemgroup in doc(concat($base,$define))//odm:ItemGroupDef[@Name='TS']
+for $itemgroup in $definedoc//odm:ItemGroupDef[@Name='TS']
     (: get the dataset name and location :)
-    let $datasetname := $itemgroup/def:leaf/@xlink:href
-    let $dataset := concat($base,$datasetname)
+	let $datasetname := (
+		if($defineversion='2.1') then $itemgroup/def21:leaf/@xlink:href
+		else $itemgroup/def:leaf/@xlink:href
+	)
+    let $datasetdoc := (
+		if($datasetname) then doc(concat($base,$datasetname))
+		else ()
+	)
     (: we need the OID of the TSPARMCD and TSPARM variables :)
     let $tsparmcdoid := (
-        for $a in doc(concat($base,$define))//odm:ItemDef[@Name='TSPARMCD']/@OID 
+        for $a in $definedoc//odm:ItemDef[@Name='TSPARMCD']/@OID 
         where $a = $itemgroup/odm:ItemRef/@ItemOID 
         return $a 
     )
     let $tsparmoid := (
-        for $a in doc(concat($base,$define))//odm:ItemDef[@Name='TSPARM']/@OID 
+        for $a in $definedoc//odm:ItemDef[@Name='TSPARM']/@OID 
         where $a = $itemgroup/odm:ItemRef/@ItemOID 
         return $a 
     )
     (: iterate over all the records in the TS dataset 
     where both TSPARMCD AND TSPARM are present - 
     this should essentially be the case for all records :)
-    for $record in doc($dataset)//odm:ItemGroupData[odm:ItemData[@ItemOID=$tsparmcdoid] and odm:ItemData[@ItemOID=$tsparmoid]]
+    for $record in $datasetdoc//odm:ItemGroupData[odm:ItemData[@ItemOID=$tsparmcdoid] and odm:ItemData[@ItemOID=$tsparmoid]]
         let $recnum := $record/@data:ItemGroupDataSeq
         let $tsparmcdvalue1 := $record/odm:ItemData[@ItemOID=$tsparmcdoid]/@Value
         let $tsparmvalue1 := $record/odm:ItemData[@ItemOID=$tsparmoid]/@Value
         (: iterate over all following records having the same value for TSPARM:)
-        for $record2 in doc($dataset)//odm:ItemGroupData[@data:ItemGroupDataSeq>$recnum][odm:ItemData[@ItemOID=$tsparmoid and @Value=$tsparmvalue1]]
+        for $record2 in $datasetdoc//odm:ItemGroupData[@data:ItemGroupDataSeq>$recnum][odm:ItemData[@ItemOID=$tsparmoid and @Value=$tsparmvalue1]]
             let $recnum2 := $record2/@data:ItemGroupDataSeq
             let $tsparmcdvalue2 := $record2/odm:ItemData[@ItemOID=$tsparmcdoid]/@Value 
             (: and compare the values - both must be equal :)

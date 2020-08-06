@@ -14,6 +14,7 @@ See the License for the specific language governing permissions and limitations 
 (: Rule SD1228: Variable value not found in user-defined codelist when value-level condition occurs :)
 xquery version "3.0";
 declare namespace def = "http://www.cdisc.org/ns/def/v2.0";
+declare namespace def21 = "http://www.cdisc.org/ns/def/v2.1";
 declare namespace odm="http://www.cdisc.org/ns/odm/v1.3";
 declare namespace data="http://www.cdisc.org/ns/Dataset-XML/v1.0";
 declare namespace xlink="http://www.w3.org/1999/xlink";
@@ -26,6 +27,7 @@ declare function functx:is-value-in-sequence
 (: "declare variable ... external" allows to pass $base and $define from an external programm :)
 declare variable $base external;
 declare variable $define external;
+declare variable $defineversion external;
 declare variable $datasetname external; 
 (: find all dataset definitions  :)
 (: let $base := '/db/fda_submissions/cdisc01/'  
@@ -36,8 +38,14 @@ let $definedoc := doc(concat($base,$define))
 for $itemgroupdef in $definedoc//odm:ItemGroupDef[@Name=$datasetname]
     let $name := $itemgroupdef/@Name
     (: get the location of the dataset and document :)
-    let $datasetlocation := $itemgroupdef/def:leaf/@xlink:href
-    let $datasetdoc := doc(concat($base,$datasetlocation))
+	let $datasetlocation := (
+		if($defineversion='2.1') then $itemgroupdef/def21:leaf/@xlink:href
+		else $itemgroupdef/def:leaf/@xlink:href
+	)
+    let $datasetdoc := (
+		if($datasetlocation) then doc(concat($base,$datasetlocation))
+		else ()
+	)
     (: get the OIDs of the coded ValueList variables for this dataset
     We currently still need to exclude "External" CodeLists as long as they do not have a RESTful WS available,
     and as long as ODM/Dataset-XML does not support RESTful web services :)

@@ -14,17 +14,19 @@ See the License for the specific language governing permissions and limitations 
 (: Rule SD0035 - When --DOSE != null or --DOSTOT != null or --DOSTXT != null then --DOSU != null :)
 xquery version "3.0";
 declare namespace def = "http://www.cdisc.org/ns/def/v2.0";
+declare namespace def21 = "http://www.cdisc.org/ns/def/v2.1";
 declare namespace odm="http://www.cdisc.org/ns/odm/v1.3";
 declare namespace data="http://www.cdisc.org/ns/Dataset-XML/v1.0";
 declare namespace xlink="http://www.w3.org/1999/xlink"; 
 (: "declare variable ... external" allows to pass $base and $define from an external programm :)
 declare variable $base external;
 declare variable $define external; 
+declare variable $defineversion external;
 (: let $base := '/db/fda_submissions/cdisc01/' :)
 (: let $define := 'define2-0-0-example-sdtm.xml' :)
 let $definedoc := doc(concat($base,$define))
 (: iterate over all the datasets , but only the INTERVENTIONS ones :)
-for $dataset in doc(concat($base,$define))//odm:ItemGroupDef[upper-case(@def:Class)='INTERVENTIONS']
+for $dataset in doc(concat($base,$define))//odm:ItemGroupDef[upper-case(@def:Class)='INTERVENTIONS' or upper-case(./def21:Class/@Name)='INTERVENTIONS']
     (: get the dataset :)
     let $domain := $dataset/@Domain
     let $name := $dataset/@Name
@@ -33,8 +35,14 @@ for $dataset in doc(concat($base,$define))//odm:ItemGroupDef[upper-case(@def:Cla
         if($dataset/@Domain) then $dataset/@Domain
         else substring($name,1,2)
     )
-    let $datasetname := $dataset/def:leaf/@xlink:href
-    let $datasetdoc := doc(concat($base,$datasetname))
+	let $datasetname := (
+		if($defineversion='2.1') then $dataset/def21:leaf/@xlink:href
+		else $dataset/def:leaf/@xlink:href
+	)
+    let $datasetdoc := (
+		if($datasetname) then doc(concat($base,$datasetname))
+		else ()
+	)
     (: get the OID and name of the --DOSTOT variable :)
     let $dostotoid := (
         for $a in $definedoc//odm:ItemDef[ends-with(@Name,'DOSTOT')]/@OID 

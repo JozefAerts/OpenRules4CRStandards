@@ -15,12 +15,14 @@ See the License for the specific language governing permissions and limitations 
 Applicable to SE, TA, TE :)
 xquery version "3.0";
 declare namespace def = "http://www.cdisc.org/ns/def/v2.0";
+declare namespace def21 = "http://www.cdisc.org/ns/def/v2.1";
 declare namespace odm="http://www.cdisc.org/ns/odm/v1.3";
 declare namespace data="http://www.cdisc.org/ns/Dataset-XML/v1.0";
 declare namespace xlink="http://www.w3.org/1999/xlink";
 (: "declare variable ... external" allows to pass $base and $define from an external programm :)
 declare variable $base external;
 declare variable $define external;
+declare variable $defineversion external;
 (: let $base := '/db/fda_submissions/cdisc01/' :)
 (: let $define := 'define2-0-0-example-sdtm.xml' :)
 let $definedoc := doc(concat($base,$define))
@@ -30,8 +32,14 @@ let $datasets := doc(concat($base,$define))//odm:ItemGroupDef[@Name='SE' or @Nam
 for $datasetdef in $datasets
     (: get the dataset name and location :)
     let $name := $datasetdef/@Name
-    let $datasetname := $datasetdef/def:leaf/@xlink:href
-    let $datasetlocation := concat($base,$datasetname)
+	let $datasetname := (
+		if($defineversion='2.1') then $datasetdef/def21:leaf/@xlink:href
+		else $datasetdef/def:leaf/@xlink:href
+	)
+    let $datasetdoc := (
+		if($datasetname) then doc(concat($base,$datasetname))
+		else ()
+	)
     (: get the OIDs of ETCD and ELEMENT :)
     let $etcdoid := (
         for $a in $definedoc//odm:ItemDef[@Name='ETCD']/@OID 
@@ -44,13 +52,13 @@ for $datasetdef in $datasets
         return $a 
     )
     (: iterate over all records that have BOTH ETCD and ELEMENT populated :)
-    for $record in doc($datasetlocation)//odm:ItemGroupData[odm:ItemData[@ItemOID=$etcdoid] and odm:ItemData[@ItemOID=$elementoid]]
+    for $record in $datasetdoc//odm:ItemGroupData[odm:ItemData[@ItemOID=$etcdoid] and odm:ItemData[@ItemOID=$elementoid]]
         let $recnum := $record/@data:ItemGroupDataSeq
         (: and get the values of ETCD and ELEMENT :)
         let $etcdvalue := $record/odm:ItemData[@ItemOID=$etcdoid]/@Value
         let $elementvalue := $record/odm:ItemData[@ItemOID=$elementoid]/@Value
         (: iterate over all further records that DO have ETCD and ELEMENT populated AND for which ETCD corresponds to the current value of ETCD :)
-        for $record2 in doc($datasetlocation)//odm:ItemGroupData[@data:ItemGroupDataSeq > $recnum][odm:ItemData[@ItemOID=$etcdoid] and odm:ItemData[@ItemOID=$elementoid] and odm:ItemData[@ItemOID=$etcdoid]/@Value=$etcdvalue]
+        for $record2 in $datasetdoc//odm:ItemGroupData[@data:ItemGroupDataSeq > $recnum][odm:ItemData[@ItemOID=$etcdoid] and odm:ItemData[@ItemOID=$elementoid] and odm:ItemData[@ItemOID=$etcdoid]/@Value=$etcdvalue]
             let $recnum2 := $record2/@data:ItemGroupDataSeq
             (: and again, get the values of ETCD and ELEMENT :)
             let $etcdvalue2 := $record2/odm:ItemData[@ItemOID=$etcdoid]/@Value (: should be identical to $etcdvalue :)

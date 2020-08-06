@@ -14,15 +14,18 @@ See the License for the specific language governing permissions and limitations 
 (: Rule SD0061 - Domain referenced in define.xml but dataset is missing :)
 xquery version "3.0";
 declare namespace def = "http://www.cdisc.org/ns/def/v2.0";
+declare namespace def21 = "http://www.cdisc.org/ns/def/v2.1";
 declare namespace odm="http://www.cdisc.org/ns/odm/v1.3";
 declare namespace data="http://www.cdisc.org/ns/Dataset-XML/v1.0";
 declare namespace xlink="http://www.w3.org/1999/xlink";
 (: "declare variable ... external" allows to pass $base and $define from an external programm :)
 declare variable $base external;
 declare variable $define external;
+declare variable $defineversion external;
 (: let $base := '/db/fda_submissions/cdisc01/' :)
 (: let $define := 'define2-0-0-example-sdtm.xml' :)
-for $filename in doc(concat($base,$define))//odm:ItemGroupDef/def:leaf/@xlink:href
+let $definedoc := doc(concat($base,$define))
+for $filename in $definedoc//odm:ItemGroupDef/def:leaf/@xlink:href
 	let $datasetname := $filename/../../@Name  (: go up to ItemGroupDef level :)
     let $submdoc := concat($base,$filename)
     where not(doc($submdoc))

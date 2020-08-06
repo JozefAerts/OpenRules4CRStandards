@@ -15,23 +15,32 @@ See the License for the specific language governing permissions and limitations 
 (: Applies to: INTERVENTIONS, EVENTS, FINDINGS, CO :)
 xquery version "3.0";
 declare namespace def = "http://www.cdisc.org/ns/def/v2.0";
+declare namespace def21 = "http://www.cdisc.org/ns/def/v2.1";
 declare namespace odm="http://www.cdisc.org/ns/odm/v1.3";
 declare namespace data="http://www.cdisc.org/ns/Dataset-XML/v1.0";
 declare namespace xlink="http://www.w3.org/1999/xlink";
 (: "declare variable ... external" allows to pass $base and $define from an external programm :)
 declare variable $base external;
 declare variable $define external;  
+declare variable $defineversion external;
 declare variable $datasetname external;
 (: let $base := '/db/fda_submissions/cdisc01/' 
 let $define := 'define2-0-0-example-sdtm.xml' :)
 let $definedoc := doc(concat($base,$define))
 (: Iterate over the INTERVENTIONS, EVENTS, FINDINGS, and CO datasets :)
-for $itemgroupdef in doc(concat($base,$define))//odm:ItemGroupDef[@Name=$datasetname][upper-case(@def:Class)='INTERVENTIONS' or upper-case(@def:Class)='EVENTS' or upper-case(@def:Class)='FINDINGS' or @Domain='CO']
+for $itemgroupdef in doc(concat($base,$define))//odm:ItemGroupDef[@Name=$datasetname][upper-case(@def:Class)='INTERVENTIONS' or upper-case(@def:Class)='EVENTS' or upper-case(@def:Class)='FINDINGS' 
+		or upper-case(./def21:Class/@Name)='INTERVENTIONS' or upper-case(./def21:Class/@Name)='EVENTS' or upper-case(./def21:Class/@Name)='FINDINGS'
+		or @Domain='CO']
     let $name := $itemgroupdef/@Name
     (: get the dataset location and the dataset document itself :)
-    let $datasetname := $itemgroupdef/def:leaf/@xlink:href
-    let $datasetlocation := concat($base,$datasetname)
-    let $datasetdoc := doc($datasetlocation)
+	let $datasetname := (
+		if($defineversion='2.1') then $itemgroupdef/def21:leaf/@xlink:href
+		else $itemgroupdef/def:leaf/@xlink:href
+	)
+    let $datasetdoc := (
+		if($datasetname) then doc(concat($base,$datasetname))
+		else ()
+	)
     (: and get the OID of --TPT and of --TPTNUM and their name :)
     let $tptoid := (
         for $a in $definedoc//odm:ItemDef[ends-with(@Name,'TPT')]/@OID 

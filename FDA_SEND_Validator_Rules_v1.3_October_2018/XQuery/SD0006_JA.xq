@@ -17,12 +17,14 @@ All subjects should have at least one baseline observation (--BLFL = 'Y') in EG,
 :)
 xquery version "3.0";
 declare namespace def = "http://www.cdisc.org/ns/def/v2.0";
+declare namespace def21 = "http://www.cdisc.org/ns/def/v2.1";
 declare namespace odm="http://www.cdisc.org/ns/odm/v1.3";
 declare namespace data="http://www.cdisc.org/ns/Dataset-XML/v1.0";
 declare namespace xlink="http://www.w3.org/1999/xlink";
 (: "declare variable ... external" allows to pass $base and $define from an external programm :)
 declare variable $base external;
 declare variable $define external; 
+declare variable $defineversion external;
 (: let $base := 'SEND_3_0_PDS2014/'  :)
 (: let $define := 'define2-0-0_DS.xml' :)
 let $definedoc := doc(concat($base,$define))
@@ -40,7 +42,10 @@ let $dmusubjidoid := (
     return $a
 )
 (: and the location of the DM dataset :)
-let $dmdatasetname := $definedoc//odm:ItemGroupDef[@Name='DM']/def:leaf/@xlink:href
+let $dmdatasetname := (
+	if($defineversion='2.1') then $definedoc//odm:ItemGroupDef[@Name='DM']/def21:leaf/@xlink:href
+	else $definedoc//odm:ItemGroupDef[@Name='DM']/def:leaf/@xlink:href
+)
 let $dmdatasetlocation := concat($base,$dmdatasetname)
 (: find all subjects in DM for which ARMCD is NOT SCRNFAIL, NOT NOTASSGN and NOT NOTTRT :)
 let $randomizedsubjects := doc($dmdatasetlocation)//odm:ItemGroupData[odm:ItemData[@ItemOID=$armcdoid][not(@Value='SCRNFAIL') and not(@Value='NOTASSGN') and not(@Value=NOTTRT)]]/odm:ItemData[@ItemOID=$dmusubjidoid]/@Value

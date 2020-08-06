@@ -14,17 +14,20 @@ See the License for the specific language governing permissions and limitations 
 (: Rule SD1071 - Dataset is greater than 5 GB in size :)
 (: Implementation ONLY in compbination with eXist :)
 (: see: http://rvdb.wordpress.com/2013/02/26/an-xquery-script-for-listing-the-contents-of-collections-in-exist-db/ :)
-(: TODO - xmldb:get-child-resources is eXist-specific, does not work for files :)
+(: TODO - xmldb:get-child-resources is eXist-specific, does not work for files, and does not work with BaseX :)
 (: suggestion: use collection('file:///a/b/c/d?select=*.xml') - see http://stackoverflow.com/questions/5601764/xquery-all-files-under-a-specific-directory :)
 xquery version "3.0";
 declare namespace def = "http://www.cdisc.org/ns/def/v2.0";
+declare namespace def21 = "http://www.cdisc.org/ns/def/v2.1";
 declare namespace odm="http://www.cdisc.org/ns/odm/v1.3";
 declare namespace data="http://www.cdisc.org/ns/Dataset-XML/v1.0";
 declare namespace xlink="http://www.w3.org/1999/xlink";
 declare namespace request="http://exist-db.org/xquery/request";
+declare namespace xmldb="http://exist-db.org/xquery/xmldb";
 (: "declare variable ... external" allows to pass $base and $define from an external programm :)
 declare variable $base external; 
 declare variable $define external; 
+declare variable $defineversion external;
 (: let $base := '/db/fda_submissions/cdisc01/' :)
 (: let $define := 'define2-0-0-example-sdtm.xml' :)
 (: TODO: xmldb:get-child-resources only works for eXist-DB :)

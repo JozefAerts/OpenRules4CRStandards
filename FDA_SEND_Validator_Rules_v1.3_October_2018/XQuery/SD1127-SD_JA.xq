@@ -15,40 +15,49 @@ See the License for the specific language governing permissions and limitations 
 All values of Planned Time Point Number (--TPTNUM) variable should be the same for a given value of Planned Time Point Name (--TPT) variable :)
 xquery version "3.0";
 declare namespace def = "http://www.cdisc.org/ns/def/v2.0";
+declare namespace def21 = "http://www.cdisc.org/ns/def/v2.1";
 declare namespace odm="http://www.cdisc.org/ns/odm/v1.3";
 declare namespace data="http://www.cdisc.org/ns/Dataset-XML/v1.0";
 declare namespace xlink="http://www.w3.org/1999/xlink";
 (: "declare variable ... external" allows to pass $base and $define from an external programm :)
 declare variable $base external;
 declare variable $define external; 
+declare variable $defineversion external;
 declare variable $datasetname external;
 (: let $base := '/db/fda_submissions/cdisc01/' :)
 (: let $define := 'define2-0-0-example-sdtm.xml' :)
-
+let $definedoc := doc(concat($base,$define))
 (: iterate over all provided datasets :)
-for $dataset in doc(concat($base,$define))//odm:ItemGroupDef[@Name=$datasetname][upper-case(@def:Class)='INTERVENTIONS' or upper-case(@def:Class)='EVENTS' or upper-case(@def:Class)='FINDINGS']
+for $dataset in $definedoc//odm:ItemGroupDef[@Name=$datasetname][upper-case(@def:Class)='INTERVENTIONS' or upper-case(@def:Class)='EVENTS' or upper-case(@def:Class)='FINDINGS'
+		or upper-case(./def21:Class/@Name)='INTERVENTIONS' or upper-case(./def21:Class/@Name)='EVENTS' or upper-case(./def21:Class/@Name)='FINDINGS']
     let $name := $dataset/@Name
-    let $dsname := $dataset/def:leaf/@xlink:href
-    let $datasetlocation:= concat($base,$dsname)
-    (: and get the OIDs of --TPT and --TPTNUM :)
+	let $dsname := (
+		if($defineversion='2.1') then $dataset/def21:leaf/@xlink:href
+		else $dataset/def:leaf/@xlink:href
+	)
+    let $datasetdoc:= (
+		if($dsname) then doc(concat($base,$dsname))
+		else ()
+	)
+	(: and get the OIDs of --TPT and --TPTNUM :)
     let $tptoid := (
-    for $a in doc(concat($base,$define))//odm:ItemDef[ends-with(@Name,'TPT')]/@OID 
-        where $a = doc(concat($base,$define))//odm:ItemGroupDef[@Name=$name]/odm:ItemRef/@ItemOID
+    for $a in $definedoc//odm:ItemDef[ends-with(@Name,'TPT')]/@OID 
+        where $a = $definedoc//odm:ItemGroupDef[@Name=$name]/odm:ItemRef/@ItemOID
         return $a
     )
-    let $tptname := doc(concat($base,$define))//odm:ItemDef[@OID=$tptoid]/@Name
+    let $tptname := $definedoc//odm:ItemDef[@OID=$tptoid]/@Name
     let $tptnumoid := (
-    for $a in doc(concat($base,$define))//odm:ItemDef[ends-with(@Name,'TPTNUM')]/@OID 
-        where $a = doc(concat($base,$define))//odm:ItemGroupDef[@Name=$name]/odm:ItemRef/@ItemOID
+    for $a in $definedoc//odm:ItemDef[ends-with(@Name,'TPTNUM')]/@OID 
+        where $a = $definedoc//odm:ItemGroupDef[@Name=$name]/odm:ItemRef/@ItemOID
         return $a
     )
-    let $tptnumname := doc(concat($base,$define))//odm:ItemDef[@OID=$tptnumoid]/@Name
+    let $tptnumname := $definedoc//odm:ItemDef[@OID=$tptnumoid]/@Name
     (: Get all unique values of --TPT :)
-    let $tptuniquevalues := distinct-values(doc($datasetlocation)//odm:ItemGroupData/odm:ItemData[@ItemOID=$tptoid]/@Value)
+    let $tptuniquevalues := distinct-values($datasetdoc//odm:ItemGroupData/odm:ItemData[@ItemOID=$tptoid]/@Value)
     (: iterate over the unique TPTNUM values and get the records :)
     for $tptuniquevalue in $tptuniquevalues
         (: get all the records :)
-        let $uniquetptrecords := doc($datasetlocation)//odm:ItemGroupData[odm:ItemData[@ItemOID=$tptoid][@Value=$tptuniquevalue]]
+        let $uniquetptrecords := $datasetdoc//odm:ItemGroupData[odm:ItemData[@ItemOID=$tptoid][@Value=$tptuniquevalue]]
         (: get the unique values for TPTNUM within each of the unique TPT values, and count them :)
         let $uniquetptnumvalues := distinct-values($uniquetptrecords/odm:ItemData[@ItemOID=$tptnumoid]/@Value)
         let $uniquetptnumvaluescount := count($uniquetptnumvalues)
